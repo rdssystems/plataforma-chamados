@@ -100,12 +100,11 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
        - Prazos realistas (alguns vencidos para testar atrasados, alguns futuros, alguns sem prazo).
        - `iniciado_em` e `concluido_em` consistentes com os status.
        - Histórico de `MudancaStatus` e comentários para simular atividade real.
-2. **Testes e Validação**:
-   - Rodar `python manage.py popular_demo`.
-   - Verificar consistência e visualização no Dashboard, Kanban e Relatórios.
-
-
-
-
-
-
+### Critérios de Aceite Concluídos:
+- [x] Comando `popular_demo` implementado em `chamados/management/commands/popular_demo.py`.
+- [x] Criação de 3 plataformas com cores hexadecimais distintas.
+- [x] Criação de 1 gestor admin (`gestor` / `gestor123`) e 3 desenvolvedores (`dev_lucas`, `dev_mariana`, `dev_carlos` / `dev123`).
+- [x] Geração de 60 chamados distribuídos nos últimos 3 meses com histórico de status e comentários.
+- [x] Suporte à flag `--limpar`.
+- [x] Testes automatizados cobrindo os comandos em `chamados/tests/test_commands.py`.
+- [x] Todos os 46 testes passando com sucesso no pytest.
