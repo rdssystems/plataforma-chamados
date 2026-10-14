@@ -8,12 +8,16 @@ from .views import (
     ComentarioCreateView,
     AnexoUploadView,
     AnexoDownloadView,
+    ChamadoKanbanView,
+    ChamadoMoverKanbanView,
 )
 
 app_name = 'chamados'
 
 urlpatterns = [
     path('chamados/', ChamadoListView.as_view(), name='chamado_list'),
+    path('chamados/kanban/', ChamadoKanbanView.as_view(), name='kanban'),
+    path('chamados/kanban/mover/', ChamadoMoverKanbanView.as_view(), name='kanban_mover'),
     path('chamados/novo/', ChamadoCreateView.as_view(), name='chamado_create'),
     path('chamados/<int:pk>/', ChamadoDetailView.as_view(), name='chamado_detail'),
     path('chamados/<int:pk>/editar/', ChamadoUpdateView.as_view(), name='chamado_update'),

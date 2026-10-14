@@ -9,8 +9,8 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 - [x] **Etapa 1 — Base, contas e permissões** (Concluída)
 - [x] **Etapa 2 — Plataformas e chamados** (Concluída)
 - [x] **Etapa 3 — Comentários, anexos, histórico e notificações** (Concluída)
-- [ ] **Etapa 4 — Kanban** (Em andamento)
-- [ ] **Etapa 5 — Dashboard**
+- [x] **Etapa 4 — Kanban** (Concluída)
+- [ ] **Etapa 5 — Dashboard** (Em andamento)
 - [ ] **Etapa 6 — Relatórios**
 - [ ] **Extra — Dados de demonstração**
 
@@ -53,39 +53,48 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 
 ---
 
-## Detalhamento da Etapa 4 — Kanban
+## Conclusão da Etapa 4 — Kanban
+
+### Critérios de Aceite da Etapa 4:
+- [x] Uma coluna por status; arrastar entre colunas chama o mesmo serviço de transição.
+- [x] Arraste recusado volta o card para a coluna original e mostra a mensagem.
+- [x] Ordem dentro da coluna salva em ordem_kanban.
+- [x] Filtros de plataforma e responsável.
+- [x] Todos os 35 testes passando no pytest.
+
+---
+
+## Detalhamento da Etapa 5 — Dashboard
 
 ### Objetivos e Escopo:
-1. **Visualização em Colunas por Status**:
-   - Rota `/chamados/kanban/`.
-   - 5 colunas correspondentes aos status: Aberto, Em andamento, Em revisão, Concluído, Cancelado.
-   - Cada card exibe:
-     - Código (ex: CH-0001) e link para o detalhe.
-     - Título da demanda.
-     - Badge da plataforma (com a cor hex customizada).
-     - Badge de prioridade (urgente, alta, média, baixa).
-     - Avatar ou iniciais do responsável.
-     - Prazo em vermelho com alerta de atrasado caso esteja vencido.
-2. **Arrastar e Soltar (Drag and Drop) com SortableJS**:
-   - Integração do SortableJS via CDN (sem builds de JS).
-   - Movimentação entre colunas dispara requisição assíncrona (via fetch/HTMX) chamando o mesmo serviço `mudar_status(chamado, novo_status, usuario, comentario)`.
-   - Reordenação dentro da coluna salva em `ordem_kanban`.
-3. **Tratamento de Transições Inválidas**:
-   - Quando o usuário tentar arrastar para uma coluna não permitida (ou sem permissão do seu papel):
-     - A transição é recusada pelo backend.
-     - O card é retornado automaticamente para a coluna de origem.
-     - Uma notificação/toast de erro é exibida com a mensagem exata da regra violada.
-   - Para transições que exigem motivo obrigatório (ex: cancelamento, devolução, reabertura):
-     - Exibição de modal/prompt solicitando o motivo obrigatório antes de efetivar ou confirmação controlada.
-4. **Filtros do Kanban**:
-   - Filtro por plataforma e filtro por responsável, preservando a experiência ágil.
-5. **Permissões no Kanban**:
-   - Admin vê todos os cards.
-   - Dev vê apenas os cards aos quais tem acesso (atribuídos a ele ou criados por ele).
+1. **Cards de Indicadores (Topo)**:
+   - Abertos (status Aberto)
+   - Em andamento (Em andamento + Em revisão)
+   - Atrasados (prazo vencido e status não final), com destaque visual em vermelho
+   - Concluídos no mês corrente (concluido_em no mês atual)
+   - Sem responsável (apenas admin vê este indicador)
+2. **Gráficos com Chart.js**:
+   - Dados servidos via view especializada retornando JSON (`/dashboard/dados-graficos/`):
+     - Linha: chamados abertos × concluídos por semana nas últimas 12 semanas (com `TruncWeek` e agregações no banco, sem laços em Python).
+     - Barras: chamados ativos por plataforma, utilizando a cor cadastrada de cada plataforma.
+     - Barras: chamados concluídos por dev no mês corrente (exibido apenas para Admin).
+     - Rosca (Doughnut): distribuição de chamados ativos por prioridade (urgente, alta, média, baixa).
+3. **Listas Rápidas no Dashboard**:
+   - Atrasados, ordenados pelo prazo mais antigo.
+   - Vencendo nos próximos 3 dias (prazo entre hoje e hoje + 3 dias).
+   - Últimas 10 atividades (mudanças de status e comentários recentes).
+4. **Regras de Visualização por Papel**:
+   - Admin vê os números gerais da equipe e filtro por dev.
+   - Dev vê a mesma tela filtrada estritamente pelos próprios chamados (atribuídos a ele ou criados por ele).
+5. **Otimização de Consultas**:
+   - Consultas agregadas diretamente no banco de dados (`aggregate`, `annotate`, `TruncWeek`, `Count`, `Q`).
+   - Carregamento com até 15 queries (usando `assertNumQueries` nos testes).
 6. **Testes Automatizados**:
-   - Endpoint de movimentação no Kanban chamando o serviço `mudar_status`.
-   - Validação de atualização de `ordem_kanban`.
-   - Recusa com erro 400 ou resposta de recusa quando a transição é inválida, mantendo o status original.
+   - Verificação dos cálculos dos 5 cards com dados controlados.
+   - Verificação de isolamento do Dev (vê apenas seus números).
+   - Verificação da view JSON de gráficos com consultas agregadas.
+   - Teste de limite de consultas SQL (<= 15 queries).
+
 
 
 

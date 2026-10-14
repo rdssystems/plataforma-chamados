@@ -330,3 +330,101 @@ class AnexoDownloadView(LoginRequiredMixin, View):
         anexo = get_object_or_404(Anexo, pk=anexo_pk, chamado=chamado)
         return FileResponse(anexo.arquivo.open('rb'), as_attachment=True, filename=anexo.nome_original)
 
+
+class ChamadoKanbanView(LoginRequiredMixin, ListView):
+    model = Chamado
+    template_name = 'chamados/kanban.html'
+    context_object_name = 'chamados'
+
+    def get_queryset(self):
+        user = self.request.user
+        if getattr(user, 'is_admin', False):
+            qs = Chamado.objects.all()
+        else:
+            qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
+
+        qs = qs.select_related('plataforma', 'responsavel', 'criado_por')
+
+        plataforma_id = self.request.GET.get('plataforma', '').strip()
+        responsavel_id = self.request.GET.get('responsavel', '').strip()
+
+        if plataforma_id:
+            qs = qs.filter(plataforma_id=plataforma_id)
+        if responsavel_id:
+            qs = qs.filter(responsavel_id=responsavel_id)
+
+        return qs.order_by('ordem_kanban', '-criado_em')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.contrib.auth import get_user_model
+        Usuario = get_user_model()
+
+        chamados = self.get_queryset()
+
+        colunas = [
+            {'status': Chamado.STATUS_ABERTO, 'titulo': 'Aberto', 'cor': 'amber', 'badge': 'bg-amber-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_ABERTO]},
+            {'status': Chamado.STATUS_EM_ANDAMENTO, 'titulo': 'Em Andamento', 'cor': 'blue', 'badge': 'bg-blue-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_EM_ANDAMENTO]},
+            {'status': Chamado.STATUS_EM_REVISAO, 'titulo': 'Em Revisão', 'cor': 'purple', 'badge': 'bg-purple-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_EM_REVISAO]},
+            {'status': Chamado.STATUS_CONCLUIDO, 'titulo': 'Concluído', 'cor': 'emerald', 'badge': 'bg-emerald-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_CONCLUIDO]},
+            {'status': Chamado.STATUS_CANCELADO, 'titulo': 'Cancelado', 'cor': 'slate', 'badge': 'bg-slate-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_CANCELADO]},
+        ]
+
+        context['colunas'] = colunas
+        context['plataformas'] = Plataforma.objects.filter(ativa=True)
+        context['responsaveis'] = Usuario.objects.filter(is_active=True).order_by('first_name', 'username')
+        context['filtro_plataforma'] = self.request.GET.get('plataforma', '')
+        context['filtro_responsavel'] = self.request.GET.get('responsavel', '')
+        return context
+
+
+class ChamadoMoverKanbanView(LoginRequiredMixin, View):
+    def post(self, request):
+        import json
+        from django.http import JsonResponse
+
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
+            chamado_id = data.get('chamado_id')
+            novo_status = data.get('novo_status')
+            comentario = data.get('comentario', '')
+            ordem_ids = data.get('ordem_ids', [])
+
+            if isinstance(ordem_ids, str):
+                ordem_ids = [int(x) for x in ordem_ids.split(',') if x.strip().isdigit()]
+
+            chamado = get_object_or_404(Chamado, pk=chamado_id)
+
+            # Checa permissão de visualização
+            if not getattr(request.user, 'is_admin', False):
+                if chamado.responsavel != request.user and chamado.criado_por != request.user:
+                    return JsonResponse({'sucesso': False, 'erro': 'Acesso negado a este chamado.'}, status=403)
+
+            # Se mudou de status, chama o serviço único de transição
+            if novo_status and chamado.status != novo_status:
+                try:
+                    mudar_status(chamado, novo_status, request.user, comentario=comentario)
+                except ValidationError as e:
+                    msg = e.message if hasattr(e, 'message') else str(e)
+                    return JsonResponse({'sucesso': False, 'erro': msg}, status=400)
+
+            # Atualiza ordem_kanban para os cards fornecidos
+            if ordem_ids:
+                for pos, c_id in enumerate(ordem_ids):
+                    Chamado.objects.filter(pk=c_id).update(ordem_kanban=pos)
+
+            return JsonResponse({
+                'sucesso': True,
+                'codigo': chamado.codigo,
+                'status': chamado.status,
+                'status_display': chamado.get_status_display()
+            })
+
+        except Exception as e:
+            return JsonResponse({'sucesso': False, 'erro': str(e)}, status=400)
+
+

@@ -246,3 +246,64 @@ class TestViewsChamadosPermissoes:
 
         res = client.get(reverse('chamados:chamado_update', kwargs={'pk': c.pk}))
         assert res.status_code == 403
+
+
+@pytest.mark.django_db
+class TestKanban:
+    def test_kanban_view_visibilidade_admin_e_dev(self, client, plataforma, admin_user, dev_1, dev_2):
+        c1 = Chamado.objects.create(titulo='C1 Dev 1', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=dev_1)
+        c2 = Chamado.objects.create(titulo='C2 Dev 2', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=dev_2)
+
+        # Admin vê ambos
+        client.login(username='admin_boss', password='password123')
+        res_admin = client.get(reverse('chamados:kanban'))
+        assert res_admin.status_code == 200
+        assert c1.codigo in res_admin.content.decode()
+        assert c2.codigo in res_admin.content.decode()
+        client.logout()
+
+        # Dev 1 só vê c1
+        client.login(username='dev_alice', password='password123')
+        res_dev1 = client.get(reverse('chamados:kanban'))
+        assert res_dev1.status_code == 200
+        content = res_dev1.content.decode()
+        assert c1.codigo in content
+        assert c2.codigo not in content
+
+    def test_kanban_mover_transicao_valida_e_ordem(self, client, plataforma, admin_user, dev_1):
+        c1 = Chamado.objects.create(titulo='C1', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=dev_1, status=Chamado.STATUS_ABERTO)
+        c2 = Chamado.objects.create(titulo='C2', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=dev_1, status=Chamado.STATUS_ABERTO)
+
+        client.login(username='dev_alice', password='password123')
+        res = client.post(
+            reverse('chamados:kanban_mover'),
+            data={'chamado_id': c1.pk, 'novo_status': Chamado.STATUS_EM_ANDAMENTO, 'ordem_ids': [c1.pk, c2.pk]},
+            content_type='application/json'
+        )
+        assert res.status_code == 200
+        dados = res.json()
+        assert dados['sucesso'] is True
+
+        c1.refresh_from_db()
+        assert c1.status == Chamado.STATUS_EM_ANDAMENTO
+        assert c1.iniciado_em is not None
+
+    def test_kanban_mover_transicao_invalida_recusada(self, client, plataforma, admin_user, dev_1):
+        # Chamado Aberto sem responsável
+        c = Chamado.objects.create(titulo='Sem dev', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=None, status=Chamado.STATUS_ABERTO)
+
+        client.login(username='admin_boss', password='password123')
+        res = client.post(
+            reverse('chamados:kanban_mover'),
+            data={'chamado_id': c.pk, 'novo_status': Chamado.STATUS_EM_ANDAMENTO},
+            content_type='application/json'
+        )
+        assert res.status_code == 400
+        dados = res.json()
+        assert dados['sucesso'] is False
+        assert "responsável atribuído" in dados['erro']
+
+        # Status permanece inalterado
+        c.refresh_from_db()
+        assert c.status == Chamado.STATUS_ABERTO
+
