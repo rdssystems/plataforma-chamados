@@ -1,15 +1,360 @@
 {% extends 'base.html' %}
 
 {% block title %}Dashboard — Gestão de Chamados{% endblock %}
-{% block header_title %}Painel Principal{% endblock %}
+{% block header_title %}Dashboard Operacional{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h3 class="text-xl font-bold text-slate-800">Bem-vindo, {{ user.get_full_name|default:user.username }}!</h3>
-        <p class="text-slate-500 text-sm mt-1">
-            Você está conectado como <strong class="text-blue-600">{{ user.get_papel_display }}</strong>.
-        </p>
+    <!-- Top Filter & Salutation Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+            <h3 class="text-xl font-bold text-slate-800">
+                Olá, {{ user.get_full_name|default:user.username }}!
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+                {% if user.is_admin %}
+                    Visão geral de desempenho da equipe e prazos de entrega.
+                {% else %}
+                    Acompanhamento das suas demandas atribuídas e pendentes.
+                {% endif %}
+            </p>
+        </div>
+
+        {% if user.is_admin %}
+        <form method="get" class="flex items-center space-x-2">
+            <label for="dev-filter" class="text-xs font-semibold text-slate-600">Filtrar por Dev:</label>
+            <select id="dev-filter" name="dev" onchange="this.form.submit()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                <option value="">Toda a Equipe</option>
+                {% for d in devs %}
+                <option value="{{ d.id }}" {% if dev_selecionado == d.id|stringformat:"s" %}selected{% endif %}>
+                    {{ d.get_full_name|default:d.username }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if dev_selecionado %}
+            <a href="{% url 'dashboard:index' %}" class="text-xs text-red-600 hover:underline">Limpar</a>
+            {% endif %}
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Cards de Indicadores (Topo) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-{{ user.is_admin|yesno:'5,4' }} gap-4">
+        <!-- Abertos -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Abertos</p>
+                <p class="text-2xl font-black text-slate-800 mt-1">{{ cards.total_abertos|default:0 }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+                ★
+            </div>
+        </div>
+
+        <!-- Em Andamento -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Em Andamento</p>
+                <p class="text-2xl font-black text-blue-600 mt-1">{{ cards.total_em_andamento|default:0 }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
+                &rarr;
+            </div>
+        </div>
+
+        <!-- Atrasados (Destaque Vermelho) -->
+        <div class="bg-red-50 p-5 rounded-xl border-2 border-red-300 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-red-700">Atrasados</p>
+                <p class="text-2xl font-black text-red-800 mt-1">{{ cards.total_atrasados|default:0 }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-red-200 text-red-800 flex items-center justify-center font-bold text-lg">
+                !
+            </div>
+        </div>
+
+        <!-- Concluídos no Mês -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Concluídos no Mês</p>
+                <p class="text-2xl font-black text-emerald-600 mt-1">{{ cards.total_concluidos_mes|default:0 }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                &check;
+            </div>
+        </div>
+
+        {% if user.is_admin %}
+        <!-- Card Sem Responsável (apenas Admin) -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Sem Responsável</p>
+                <p class="text-2xl font-black text-purple-600 mt-1">{{ cards.total_sem_responsavel|default:0 }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-lg">
+                ?
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Gráficos (Chart.js) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Gráfico 1: Linha (Abertos x Concluídos por semana) -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-blue-600 mr-2"></span>
+                Chamados Abertos × Concluídos por Semana (Últimas 12 Semanas)
+            </h4>
+            <div class="relative h-64">
+                <canvas id="chartLinha"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico 2: Barras (Ativos por Plataforma) -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-emerald-600 mr-2"></span>
+                Chamados Ativos por Plataforma
+            </h4>
+            <div class="relative h-64">
+                <canvas id="chartPlataformas"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico 3: Barras (Concluídos por Dev no mês - Só Admin) -->
+        {% if user.is_admin %}
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-purple-600 mr-2"></span>
+                Concluídos por Desenvolvedor (Mês Corrente)
+            </h4>
+            <div class="relative h-64">
+                <canvas id="chartDevs"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Gráfico 4: Rosca (Distribuição por Prioridade) -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm {% if not user.is_admin %}lg:col-span-2 max-w-xl mx-auto w-full{% endif %}">
+            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-amber-600 mr-2"></span>
+                Distribuição dos Ativos por Prioridade
+            </h4>
+            <div class="relative h-64">
+                <canvas id="chartPrioridades"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listas Rápidas do Dashboard -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 1. Atrasados -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="p-4 bg-red-50 border-b border-red-100 flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-red-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Atrasados Críticos
+                </h4>
+                <span class="text-xs font-bold text-red-700">{{ chamados_atrasados|length }}</span>
+            </div>
+            <div class="divide-y divide-slate-100 flex-1">
+                {% for c in chamados_atrasados %}
+                <div class="p-3 hover:bg-slate-50 transition text-xs">
+                    <div class="flex items-center justify-between">
+                        <a href="{% url 'chamados:chamado_detail' c.pk %}" class="font-bold text-blue-600 hover:underline">{{ c.codigo }}</a>
+                        <span class="font-bold text-red-600">{{ c.prazo|date:"d/m/Y" }}</span>
+                    </div>
+                    <p class="text-slate-800 font-medium truncate mt-0.5">{{ c.titulo }}</p>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                        <span>{{ c.plataforma.nome }}</span>
+                        <span>{{ c.responsavel.username|default:"Sem dev" }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhum chamado atrasado!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 2. Vencendo nos próximos 3 dias -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Vencendo em Breve (3 dias)
+                </h4>
+                <span class="text-xs font-bold text-amber-700">{{ chamados_vencendo|length }}</span>
+            </div>
+            <div class="divide-y divide-slate-100 flex-1">
+                {% for c in chamados_vencendo %}
+                <div class="p-3 hover:bg-slate-50 transition text-xs">
+                    <div class="flex items-center justify-between">
+                        <a href="{% url 'chamados:chamado_detail' c.pk %}" class="font-bold text-blue-600 hover:underline">{{ c.codigo }}</a>
+                        <span class="font-semibold text-amber-600">{{ c.prazo|date:"d/m/Y" }}</span>
+                    </div>
+                    <p class="text-slate-800 font-medium truncate mt-0.5">{{ c.titulo }}</p>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                        <span>{{ c.plataforma.nome }}</span>
+                        <span>{{ c.responsavel.username|default:"Sem dev" }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhum chamado vencendo nos próximos 3 dias.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 3. Últimas 10 Atividades -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Últimas Atividades
+                </h4>
+            </div>
+            <div class="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[300px]">
+                {% for ativ in ultimas_atividades %}
+                <div class="p-3 hover:bg-slate-50 transition text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-slate-800">{{ ativ.alterado_por.username }}</span>
+                        <span class="text-[10px] text-slate-400">{{ ativ.alterado_em|date:"d/m H:i" }}</span>
+                    </div>
+                    <p class="text-slate-600 mt-0.5">
+                        <a href="{% url 'chamados:chamado_detail' ativ.chamado.pk %}" class="text-blue-600 font-bold hover:underline">{{ ativ.chamado.codigo }}</a>
+                        mudou para <span class="font-medium text-slate-800">{{ ativ.get_para_status_display }}</span>
+                    </p>
+                </div>
+                {% empty %}
+                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhuma atividade recente.</p>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlDados = "{% url 'dashboard:dados_graficos' %}{% if dev_selecionado %}?dev={{ dev_selecionado }}{% endif %}";
+
+        fetch(urlDados)
+            .then(res => res.json())
+            .then(data => {
+                // 1. Gráfico Linha
+                const ctxLinha = document.getElementById('chartLinha');
+                if (ctxLinha) {
+                    new Chart(ctxLinha, {
+                        type: 'line',
+                        data: {
+                            labels: data.linha.labels,
+                            datasets: [
+                                {
+                                    label: 'Abertos',
+                                    data: data.linha.abertos,
+                                    borderColor: '#3B82F6',
+                                    backgroundColor: '#3B82F615',
+                                    tension: 0.3,
+                                    fill: true
+                                },
+                                {
+                                    label: 'Concluídos',
+                                    data: data.linha.concluidos,
+                                    borderColor: '#10B981',
+                                    backgroundColor: '#10B98115',
+                                    tension: 0.3,
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, ticks: { precision: 0 } }
+                            }
+                        }
+                    });
+                }
+
+                // 2. Gráfico Barras: Plataformas
+                const ctxPlat = document.getElementById('chartPlataformas');
+                if (ctxPlat) {
+                    new Chart(ctxPlat, {
+                        type: 'bar',
+                        data: {
+                            labels: data.plataformas.labels,
+                            datasets: [{
+                                label: 'Chamados Ativos',
+                                data: data.plataformas.totais,
+                                backgroundColor: data.plataformas.cores,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, ticks: { precision: 0 } }
+                            }
+                        }
+                    });
+                }
+
+                // 3. Gráfico Barras: Devs (se existir)
+                const ctxDevs = document.getElementById('chartDevs');
+                if (ctxDevs) {
+                    new Chart(ctxDevs, {
+                        type: 'bar',
+                        data: {
+                            labels: data.devs.labels,
+                            datasets: [{
+                                label: 'Concluídos no Mês',
+                                data: data.devs.totais,
+                                backgroundColor: '#8B5CF6',
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, ticks: { precision: 0 } }
+                            }
+                        }
+                    });
+                }
+
+                // 4. Gráfico Rosca: Prioridades
+                const ctxPrio = document.getElementById('chartPrioridades');
+                if (ctxPrio) {
+                    new Chart(ctxPrio, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.prioridades.labels,
+                            datasets: [{
+                                data: data.prioridades.totais,
+                                backgroundColor: data.prioridades.cores,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom' }
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(err => console.error("Erro ao carregar dados dos gráficos:", err));
+    });
+</script>
 {% endblock %}

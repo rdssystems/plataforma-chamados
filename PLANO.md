@@ -10,8 +10,8 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 - [x] **Etapa 2 — Plataformas e chamados** (Concluída)
 - [x] **Etapa 3 — Comentários, anexos, histórico e notificações** (Concluída)
 - [x] **Etapa 4 — Kanban** (Concluída)
-- [ ] **Etapa 5 — Dashboard** (Em andamento)
-- [ ] **Etapa 6 — Relatórios**
+- [x] **Etapa 5 — Dashboard** (Concluída)
+- [ ] **Etapa 6 — Relatórios** (Em andamento)
 - [ ] **Extra — Dados de demonstração**
 
 ---
@@ -64,36 +64,55 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 
 ---
 
-## Detalhamento da Etapa 5 — Dashboard
+## Conclusão da Etapa 5 — Dashboard
+
+### Critérios de Aceite da Etapa 5:
+- [x] Cards, gráficos e listas da seção Dashboard.
+- [x] Dev vê só os próprios números.
+- [x] Consultas agregadas no banco; página carrega com até 15 queries (executou em 8 queries).
+- [x] Todos os 39 testes passando no pytest.
+
+---
+
+## Detalhamento da Etapa 6 — Relatórios
 
 ### Objetivos e Escopo:
-1. **Cards de Indicadores (Topo)**:
-   - Abertos (status Aberto)
-   - Em andamento (Em andamento + Em revisão)
-   - Atrasados (prazo vencido e status não final), com destaque visual em vermelho
-   - Concluídos no mês corrente (concluido_em no mês atual)
-   - Sem responsável (apenas admin vê este indicador)
-2. **Gráficos com Chart.js**:
-   - Dados servidos via view especializada retornando JSON (`/dashboard/dados-graficos/`):
-     - Linha: chamados abertos × concluídos por semana nas últimas 12 semanas (com `TruncWeek` e agregações no banco, sem laços em Python).
-     - Barras: chamados ativos por plataforma, utilizando a cor cadastrada de cada plataforma.
-     - Barras: chamados concluídos por dev no mês corrente (exibido apenas para Admin).
-     - Rosca (Doughnut): distribuição de chamados ativos por prioridade (urgente, alta, média, baixa).
-3. **Listas Rápidas no Dashboard**:
-   - Atrasados, ordenados pelo prazo mais antigo.
-   - Vencendo nos próximos 3 dias (prazo entre hoje e hoje + 3 dias).
-   - Últimas 10 atividades (mudanças de status e comentários recentes).
-4. **Regras de Visualização por Papel**:
-   - Admin vê os números gerais da equipe e filtro por dev.
-   - Dev vê a mesma tela filtrada estritamente pelos próprios chamados (atribuídos a ele ou criados por ele).
-5. **Otimização de Consultas**:
-   - Consultas agregadas diretamente no banco de dados (`aggregate`, `annotate`, `TruncWeek`, `Count`, `Q`).
-   - Carregamento com até 15 queries (usando `assertNumQueries` nos testes).
-6. **Testes Automatizados**:
-   - Verificação dos cálculos dos 5 cards com dados controlados.
-   - Verificação de isolamento do Dev (vê apenas seus números).
-   - Verificação da view JSON de gráficos com consultas agregadas.
-   - Teste de limite de consultas SQL (<= 15 queries).
+1. **Serviço Centralizado de Métricas (`relatorios/services.py`)**:
+   - Módulo único que calcula todas as métricas do período para a tela e para as exportações:
+     - **Chamados abertos**: `criado_em` dentro do período.
+     - **Chamados concluídos**: `concluido_em` dentro do período.
+     - **Tempo médio de resolução**: média de `concluido_em − criado_em` dos concluídos.
+     - **Entregues no prazo**: % dos concluídos com `concluido_em <= prazo` (considerando apenas os que têm prazo).
+     - **Atrasados no fim do período**: `prazo < fim do período` e não concluídos até ele.
+     - **Backlog**: não finais na data de fim do período.
+     - **Quebras**:
+       - Tabela por dev: concluídos, tempo médio, % no prazo.
+       - Tabela por plataforma: abertos, concluídos, ativos.
+       - Distribuição por tipo e prioridade.
+     - **Lista detalhada**: todos os chamados concluídos no período, com código, título, plataforma, responsável, datas e tempo de resolução.
+2. **Tela de Relatórios (`/relatorios/`)**:
+   - Apenas Admin acessa (`AdminRequiredMixin`).
+   - Filtros:
+     - Atalhos de período: "Esta semana", "Semana passada", "Este mês", "Mês passado", ou intervalo personalizado (`data_inicio`, `data_fim`).
+     - Dev, plataforma, tipo e prioridade.
+   - Exibição na tela dos indicadores consolidados, tabelas de quebras e lista detalhada.
+   - Botões para exportar em Excel e PDF.
+3. **Exportação Excel (`openpyxl`)**:
+   - Arquivo `.xlsx`:
+     - Aba 1: Resumo Executivo (indicadores e quebras gerais).
+     - Aba 2: Desempenho por Dev.
+     - Aba 3: Desempenho por Plataforma.
+     - Aba 4: Lista Detalhada de Chamados.
+   - Formatação profissional de cabeçalhos e colunas.
+   - Nome do arquivo: `relatorio_chamados_AAAA-MM-DD_AAAA-MM-DD.xlsx`.
+4. **Exportação PDF (`WeasyPrint` com fallback HTML/PDF se GTK não disponível no Windows)**:
+   - Template HTML específico para impressão e geração de PDF (`templates/relatorios/pdf.html`).
+   - Nome do arquivo: `relatorio_chamados_AAAA-MM-DD_AAAA-MM-DD.pdf`.
+5. **Testes Automatizados**:
+   - Teste do serviço `relatorios/services.py` com dados de exemplo e resultados conhecidos calculados manualmente.
+   - Teste de exportação Excel (geração válida de workbook openpyxl com as abas e dados corretos).
+   - Teste de exportação PDF e permissões de acesso (Dev recebe 403).
+
 
 
 
