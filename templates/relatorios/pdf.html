@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Relatório de Chamados</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9pt;
+                color: #64748b;
+            }
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #1e293b;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 0;
+        }
+        .subtitle {
+            font-size: 10pt;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1e293b;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 4px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .grid-cards {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .card-val {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .card-lbl {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 9pt;
+        }
+        th {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: left;
+            padding: 6px 8px;
+        }
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 8pt;
+            color: #94a3b8;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">Relatório de Gestão de Chamados</h1>
+        <div class="subtitle">
+            Período: <strong>{{ dados.data_inicio|date:"d/m/Y" }}</strong> a <strong>{{ dados.data_fim|date:"d/m/Y" }}</strong>
+        </div>
+    </div>
+
+    <!-- Indicadores Principais -->
+    <div class="section-title">Indicadores Consolidados</div>
+    <table class="grid-cards">
+        <tr>
+            <td class="card">
+                <div class="card-val">{{ dados.total_abertos }}</div>
+                <div class="card-lbl">Abertos</div>
+            </td>
+            <td class="card">
+                <div class="card-val" style="color: #059669;">{{ dados.total_concluidos }}</div>
+                <div class="card-lbl">Concluídos</div>
+            </td>
+            <td class="card">
+                <div class="card-val" style="color: #7c3aed;">{{ dados.taxa_no_prazo }}%</div>
+                <div class="card-lbl">No Prazo</div>
+            </td>
+            <td class="card">
+                <div class="card-val" style="color: #dc2626;">{{ dados.atrasados_fim_periodo }}</div>
+                <div class="card-lbl">Atrasados no Fim</div>
+            </td>
+            <td class="card">
+                <div class="card-val" style="color: #475569;">{{ dados.backlog }}</div>
+                <div class="card-lbl">Backlog</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Tabela por Dev -->
+    <div class="section-title">Desempenho por Desenvolvedor</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Desenvolvedor</th>
+                <th>Concluídos</th>
+                <th>Tempo Médio</th>
+                <th>% no Prazo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dados.quebra_devs %}
+            <tr>
+                <td><strong>{{ d.dev.get_full_name|default:d.dev.username }}</strong></td>
+                <td>{{ d.concluidos }}</td>
+                <td>{{ d.tempo_medio|default:"—" }}</td>
+                <td>{{ d.taxa_no_prazo }}%</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Nenhum dado encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Tabela por Plataforma -->
+    <div class="section-title">Desempenho por Plataforma</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Plataforma</th>
+                <th>Abertos no Período</th>
+                <th>Concluídos no Período</th>
+                <th>Ativos Atuais</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in dados.quebra_plataformas %}
+            <tr>
+                <td><strong>{{ p.plataforma.nome }}</strong></td>
+                <td>{{ p.abertos }}</td>
+                <td>{{ p.concluidos }}</td>
+                <td>{{ p.ativos }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Nenhum dado encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Lista Detalhada -->
+    <div class="section-title">Chamados Concluídos no Período</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Título</th>
+                <th>Plataforma</th>
+                <th>Dev</th>
+                <th>Criado em</th>
+                <th>Concluído em</th>
+                <th>Tempo Resolução</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in dados.lista_detalhada %}
+            <tr>
+                <td><strong>{{ c.codigo }}</strong></td>
+                <td>{{ c.titulo }}</td>
+                <td>{{ c.plataforma.nome }}</td>
+                <td>{{ c.responsavel.username|default:"Sem dev" }}</td>
+                <td>{{ c.criado_em|date:"d/m/Y" }}</td>
+                <td>{{ c.concluido_em|date:"d/m/Y" }}</td>
+                <td>{{ c.tempo_resolucao|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">Nenhum chamado concluído no período.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Gerado pelo Sistema de Gestão de Chamados em {{ "now"|date:"d/m/Y H:i" }}
+    </div>
+</body>
+</html>

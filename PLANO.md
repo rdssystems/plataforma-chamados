@@ -11,8 +11,8 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 - [x] **Etapa 3 — Comentários, anexos, histórico e notificações** (Concluída)
 - [x] **Etapa 4 — Kanban** (Concluída)
 - [x] **Etapa 5 — Dashboard** (Concluída)
-- [ ] **Etapa 6 — Relatórios** (Em andamento)
-- [ ] **Extra — Dados de demonstração**
+- [x] **Etapa 6 — Relatórios** (Concluída)
+- [ ] **Extra — Dados de demonstração** (Em andamento)
 
 ---
 
@@ -74,44 +74,36 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 
 ---
 
-## Detalhamento da Etapa 6 — Relatórios
+## Conclusão da Etapa 6 — Relatórios
+
+### Critérios de Aceite da Etapa 6:
+- [x] Tela com filtros e todas as métricas da seção Relatórios.
+- [x] Exportação Excel e PDF com os mesmos números da tela.
+- [x] Testes do serviço de relatórios com dados de exemplo e resultados conhecidos.
+- [x] Todos os 44 testes passando no pytest.
+
+---
+
+## Detalhamento do Extra — Dados de demonstração
 
 ### Objetivos e Escopo:
-1. **Serviço Centralizado de Métricas (`relatorios/services.py`)**:
-   - Módulo único que calcula todas as métricas do período para a tela e para as exportações:
-     - **Chamados abertos**: `criado_em` dentro do período.
-     - **Chamados concluídos**: `concluido_em` dentro do período.
-     - **Tempo médio de resolução**: média de `concluido_em − criado_em` dos concluídos.
-     - **Entregues no prazo**: % dos concluídos com `concluido_em <= prazo` (considerando apenas os que têm prazo).
-     - **Atrasados no fim do período**: `prazo < fim do período` e não concluídos até ele.
-     - **Backlog**: não finais na data de fim do período.
-     - **Quebras**:
-       - Tabela por dev: concluídos, tempo médio, % no prazo.
-       - Tabela por plataforma: abertos, concluídos, ativos.
-       - Distribuição por tipo e prioridade.
-     - **Lista detalhada**: todos os chamados concluídos no período, com código, título, plataforma, responsável, datas e tempo de resolução.
-2. **Tela de Relatórios (`/relatorios/`)**:
-   - Apenas Admin acessa (`AdminRequiredMixin`).
-   - Filtros:
-     - Atalhos de período: "Esta semana", "Semana passada", "Este mês", "Mês passado", ou intervalo personalizado (`data_inicio`, `data_fim`).
-     - Dev, plataforma, tipo e prioridade.
-   - Exibição na tela dos indicadores consolidados, tabelas de quebras e lista detalhada.
-   - Botões para exportar em Excel e PDF.
-3. **Exportação Excel (`openpyxl`)**:
-   - Arquivo `.xlsx`:
-     - Aba 1: Resumo Executivo (indicadores e quebras gerais).
-     - Aba 2: Desempenho por Dev.
-     - Aba 3: Desempenho por Plataforma.
-     - Aba 4: Lista Detalhada de Chamados.
-   - Formatação profissional de cabeçalhos e colunas.
-   - Nome do arquivo: `relatorio_chamados_AAAA-MM-DD_AAAA-MM-DD.xlsx`.
-4. **Exportação PDF (`WeasyPrint` com fallback HTML/PDF se GTK não disponível no Windows)**:
-   - Template HTML específico para impressão e geração de PDF (`templates/relatorios/pdf.html`).
-   - Nome do arquivo: `relatorio_chamados_AAAA-MM-DD_AAAA-MM-DD.pdf`.
-5. **Testes Automatizados**:
-   - Teste do serviço `relatorios/services.py` com dados de exemplo e resultados conhecidos calculados manualmente.
-   - Teste de exportação Excel (geração válida de workbook openpyxl com as abas e dados corretos).
-   - Teste de exportação PDF e permissões de acesso (Dev recebe 403).
+1. **Comando de Gerenciamento `popular_demo`**:
+   - Local: `chamados/management/commands/popular_demo.py`
+   - Cria:
+     - 3 plataformas (ex: Portal Web, App Mobile, API Financeira) com cores hexadecimais distintas.
+     - 1 admin gestor (ex: `gestor`, senha `gestor123`, `papel='admin'`, `deve_trocar_senha=False`).
+     - 3 devs (ex: `dev_lucas`, `dev_mariana`, `dev_carlos`, senha `dev123`, `papel='dev'`, `deve_trocar_senha=False`).
+     - Cerca de 60 chamados realistas espalhados ao longo dos últimos 3 meses:
+       - Variedade de tipos (bug, melhoria, nova funcionalidade, suporte).
+       - Variedade de prioridades (urgente, alta, média, baixa).
+       - Variedade de status (abertos, em andamento, em revisão, concluídos, cancelados).
+       - Prazos realistas (alguns vencidos para testar atrasados, alguns futuros, alguns sem prazo).
+       - `iniciado_em` e `concluido_em` consistentes com os status.
+       - Histórico de `MudancaStatus` e comentários para simular atividade real.
+2. **Testes e Validação**:
+   - Rodar `python manage.py popular_demo`.
+   - Verificar consistência e visualização no Dashboard, Kanban e Relatórios.
+
 
 
 

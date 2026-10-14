@@ -20,3 +20,8 @@ Este documento registra decisões técnicas, simplificações e escolhas arquite
 ## 4. Permissões e Segurança
 - Mixins no servidor (`AdminRequiredMixin`, `DevOrAdminRequiredMixin` ou decorators equivalentes) aplicados em todas as views sensíveis. Dev tentando acessar rotas administrativas recebe HTTP 403 Forbidden.
 - Filtragem estrita de querysets no banco de dados para garantir que desenvolvedores vejam apenas chamados permitidos (atribuídos a eles ou criados por eles).
+
+## 5. Exportação de Relatórios (Excel e PDF)
+- **Excel**: Gerado via `openpyxl` com 4 abas estruturadas (Resumo, Desempenho por Dev, Desempenho por Plataforma e Lista Detalhada).
+- **PDF**: O `SPEC.md` especifica WeasyPrint. No ambiente operacional Windows onde bibliotecas GTK C (`libgobject-2.0-0`) não estejam instaladas no sistema, o sistema utiliza automaticamente fallback robusto com `xhtml2pdf` a partir do mesmo template HTML de impressão, garantindo a geração transparente e perfeita do arquivo `.pdf` sem falhas de runtime.
+

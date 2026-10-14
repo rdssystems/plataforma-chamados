@@ -10,6 +10,7 @@ urlpatterns = [
     path('', include('chamados.urls')),
     path('', include('notificacoes.urls')),
     path('', include('dashboard.urls')),
+    path('', include('relatorios.urls')),
 ]
 
 if settings.DEBUG:
