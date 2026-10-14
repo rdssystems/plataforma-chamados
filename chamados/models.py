@@ -149,3 +149,37 @@ class MudancaStatus(models.Model):
 
     def __str__(self):
         return f"{self.chamado.codigo}: {self.de_status} -> {self.para_status} por {self.alterado_por}"
+
+
+class Comentario(models.Model):
+    chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='comentarios')
+    autor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='comentarios_feitos')
+    texto = models.TextField(verbose_name='Comentário')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Comentário'
+        verbose_name_plural = 'Comentários'
+        ordering = ['criado_em']
+
+    def __str__(self):
+        return f"Comentário de {self.autor} em {self.chamado.codigo}"
+
+
+class Anexo(models.Model):
+    LIMITE_TAMANHO_BYTES = 10 * 1024 * 1024  # 10 MB
+
+    chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name='anexos')
+    arquivo = models.FileField(upload_to='anexos/%Y/%m/', verbose_name='Arquivo')
+    nome_original = models.CharField(max_length=255, verbose_name='Nome Original')
+    enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='anexos_enviados')
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Anexo'
+        verbose_name_plural = 'Anexos'
+        ordering = ['-enviado_em']
+
+    def __str__(self):
+        return f"{self.nome_original} ({self.chamado.codigo})"
+

@@ -89,3 +89,38 @@ class MudarStatusForm(forms.Form):
             'class': 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm'
         })
     )
+
+
+class ComentarioForm(forms.ModelForm):
+    class Meta:
+        from .models import Comentario
+        model = Comentario
+        fields = ['texto']
+        widgets = {
+            'texto': forms.Textarea(attrs={
+                'rows': 3,
+                'class': 'w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm',
+                'placeholder': 'Escreva um comentário ou atualização sobre este chamado...'
+            })
+        }
+
+
+class AnexoForm(forms.ModelForm):
+    class Meta:
+        from .models import Anexo
+        model = Anexo
+        fields = ['arquivo']
+        widgets = {
+            'arquivo': forms.FileInput(attrs={
+                'class': 'block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
+            })
+        }
+
+    def clean_arquivo(self):
+        from .models import Anexo
+        arquivo = self.cleaned_data.get('arquivo')
+        if arquivo:
+            if arquivo.size > Anexo.LIMITE_TAMANHO_BYTES:
+                raise ValidationError("O arquivo excede o limite máximo permitido de 10 MB.")
+        return arquivo
+

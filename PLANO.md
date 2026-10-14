@@ -8,8 +8,8 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 
 - [x] **Etapa 1 — Base, contas e permissões** (Concluída)
 - [x] **Etapa 2 — Plataformas e chamados** (Concluída)
-- [ ] **Etapa 3 — Comentários, anexos, histórico e notificações** (Em andamento)
-- [ ] **Etapa 4 — Kanban**
+- [x] **Etapa 3 — Comentários, anexos, histórico e notificações** (Concluída)
+- [ ] **Etapa 4 — Kanban** (Em andamento)
 - [ ] **Etapa 5 — Dashboard**
 - [ ] **Etapa 6 — Relatórios**
 - [ ] **Extra — Dados de demonstração**
@@ -42,46 +42,50 @@ Este documento detalha o progresso e o planejamento de cada etapa do projeto con
 
 ---
 
-## Detalhamento da Etapa 3 — Comentários, anexos, histórico e notificações
+## Conclusão da Etapa 3 — Comentários, anexos, histórico e notificações
+
+### Critérios de Aceite da Etapa 3:
+- [x] Comentários via HTMX no detalhe do chamado.
+- [x] Upload de anexos com limite de 10 MB e download só para quem vê o chamado.
+- [x] Linha do tempo no detalhe juntando histórico, mudanças de status e comentários.
+- [x] Notificação ao responsável quando o chamado é atribuído, comentado ou muda de status; sino com contador de não lidas.
+- [x] Todos os 32 testes passando no pytest.
+
+---
+
+## Detalhamento da Etapa 4 — Kanban
 
 ### Objetivos e Escopo:
-1. **Modelos**:
-   - `Comentario` (`chamados`):
-     - `chamado`: FK Chamado (CASCADE)
-     - `autor`: FK Usuario (PROTECT)
-     - `texto`: TextField
-     - `criado_em`: DateTimeField (auto_now_add=True)
-   - `Anexo` (`chamados`):
-     - `chamado`: FK Chamado (CASCADE)
-     - `arquivo`: FileField(upload_to='anexos/%Y/%m/') com validação de limite de 10 MB por arquivo
-     - `nome_original`: CharField(255)
-     - `enviado_por`: FK Usuario (PROTECT)
-     - `enviado_em`: DateTimeField (auto_now_add=True)
-   - `Notificacao` (`notificacoes`):
-     - `destinatario`: FK Usuario (CASCADE/PROTECT)
-     - `chamado`: FK Chamado (CASCADE)
-     - `mensagem`: CharField(255)
-     - `lida`: BooleanField (default False)
-     - `criada_em`: DateTimeField (auto_now_add=True)
-2. **Comentários via HTMX no detalhe do chamado**:
-   - Adição assíncrona de comentários sem recarregar a página.
-   - Listagem ordenada e exibição com avatar e data legível.
-3. **Upload e Download Seguro de Anexos**:
-   - Upload de anexos no detalhe do chamado com validação estrita de tamanho (máximo 10 MB).
-   - Rota de download protegida: apenas usuários com permissão de visualização do chamado correspondente (Admin ou Dev criador/responsável) podem baixar o arquivo (HTTP 403 para não autorizados).
-4. **Linha do Tempo Unificada no Detalhe**:
-   - Combinação de histórico (`HistoricalChamado`), mudanças de status (`MudancaStatus`) e comentários (`Comentario`), ordenados cronologicamente.
-5. **Notificações Internas e Contador no Sino**:
-   - Disparo automático de notificação ao responsável quando:
-     - Chamado é atribuído ao dev.
-     - Chamado recebe um novo comentário.
-     - Status do chamado é alterado.
-   - Sino no topo da interface com contador de mensagens não lidas.
-   - Tela de notificações (`/notificacoes/`) com listagem e ação HTMX de marcar como lida / marcar todas como lidas.
+1. **Visualização em Colunas por Status**:
+   - Rota `/chamados/kanban/`.
+   - 5 colunas correspondentes aos status: Aberto, Em andamento, Em revisão, Concluído, Cancelado.
+   - Cada card exibe:
+     - Código (ex: CH-0001) e link para o detalhe.
+     - Título da demanda.
+     - Badge da plataforma (com a cor hex customizada).
+     - Badge de prioridade (urgente, alta, média, baixa).
+     - Avatar ou iniciais do responsável.
+     - Prazo em vermelho com alerta de atrasado caso esteja vencido.
+2. **Arrastar e Soltar (Drag and Drop) com SortableJS**:
+   - Integração do SortableJS via CDN (sem builds de JS).
+   - Movimentação entre colunas dispara requisição assíncrona (via fetch/HTMX) chamando o mesmo serviço `mudar_status(chamado, novo_status, usuario, comentario)`.
+   - Reordenação dentro da coluna salva em `ordem_kanban`.
+3. **Tratamento de Transições Inválidas**:
+   - Quando o usuário tentar arrastar para uma coluna não permitida (ou sem permissão do seu papel):
+     - A transição é recusada pelo backend.
+     - O card é retornado automaticamente para a coluna de origem.
+     - Uma notificação/toast de erro é exibida com a mensagem exata da regra violada.
+   - Para transições que exigem motivo obrigatório (ex: cancelamento, devolução, reabertura):
+     - Exibição de modal/prompt solicitando o motivo obrigatório antes de efetivar ou confirmação controlada.
+4. **Filtros do Kanban**:
+   - Filtro por plataforma e filtro por responsável, preservando a experiência ágil.
+5. **Permissões no Kanban**:
+   - Admin vê todos os cards.
+   - Dev vê apenas os cards aos quais tem acesso (atribuídos a ele ou criados por ele).
 6. **Testes Automatizados**:
-   - Inclusão de comentários via HTMX/POST e permissão.
-   - Validação de limite de 10 MB no anexo.
-   - Restrição de download de anexo para usuários não autorizados.
-   - Criação de notificações e atualização do contador de não lidas.
+   - Endpoint de movimentação no Kanban chamando o serviço `mudar_status`.
+   - Validação de atualização de `ordem_kanban`.
+   - Recusa com erro 400 ou resposta de recusa quando a transição é inválida, mantendo o status original.
+
 
 

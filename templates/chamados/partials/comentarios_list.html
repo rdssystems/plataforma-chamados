@@ -1,0 +1,49 @@
+<div id="comentarios-secao" class="space-y-4">
+    <h4 class="text-base font-bold text-slate-800 flex items-center">
+        <svg class="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+        Comentários da Equipe ({{ comentarios.count }})
+    </h4>
+
+    <div class="space-y-3">
+        {% for com in comentarios %}
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                    {% if com.autor.avatar %}
+                    <img src="{{ com.autor.avatar.url }}" class="w-6 h-6 rounded-full object-cover">
+                    {% else %}
+                    <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                        {{ com.autor.username|slice:":2"|upper }}
+                    </span>
+                    {% endif %}
+                    <span class="font-bold text-slate-900">{{ com.autor.get_full_name|default:com.autor.username }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded {% if com.autor.is_admin %}bg-purple-100 text-purple-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                        {{ com.autor.get_papel_display }}
+                    </span>
+                </div>
+                <span class="text-slate-400">{{ com.criado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+            <p class="text-slate-700 text-sm whitespace-pre-wrap pl-8">{{ com.texto }}</p>
+        </div>
+        {% empty %}
+        <p class="text-xs text-slate-500 italic py-2">Nenhum comentário adicionado ainda.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Formulário HTMX -->
+    <form hx-post="{% url 'chamados:comentario_create' chamado.pk %}"
+          hx-target="#comentarios-secao"
+          hx-swap="outerHTML"
+          class="pt-3 border-t border-slate-100 space-y-2">
+        {% csrf_token %}
+        <label for="{{ comentario_form.texto.id_for_label }}" class="block text-xs font-semibold text-slate-600">
+            Adicionar Novo Comentário
+        </label>
+        {{ comentario_form.texto }}
+        <div class="flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow transition">
+                Enviar Comentário
+            </button>
+        </div>
+    </form>
+</div>

@@ -5,13 +5,14 @@ from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 
 from accounts.mixins import AdminRequiredMixin
 from plataformas.models import Plataforma
-from .models import Chamado, MudancaStatus
-from .forms import ChamadoForm, MudarStatusForm
+from .models import Chamado, MudancaStatus, Comentario, Anexo
+from .forms import ChamadoForm, MudarStatusForm, ComentarioForm, AnexoForm
 from .services import mudar_status
+from notificacoes.services import notificar_comentario, notificar_atribuicao
 
 
 class ChamadoListView(LoginRequiredMixin, ListView):
@@ -128,8 +129,54 @@ class ChamadoDetailView(LoginRequiredMixin, DetailView):
                 acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Reabrir Chamado', 'cor': 'purple', 'requer_comentario': True})
 
         context['acoes_possiveis'] = acoes_possiveis
-        context['mudancas_status'] = chamado.mudancas_status.select_related('alterado_por').order_by('-alterado_em')
-        context['historico'] = chamado.history.all().order_by('-history_date')
+
+        # Comentários e Anexos
+        context['comentarios'] = chamado.comentarios.select_related('autor').order_by('criado_em')
+        context['anexos'] = chamado.anexos.select_related('enviado_por').order_by('-enviado_em')
+        context['comentario_form'] = ComentarioForm()
+        context['anexo_form'] = AnexoForm()
+
+        # Montagem da Linha do Tempo Unificada
+        eventos = []
+        eventos.append({
+            'tipo': 'criacao',
+            'data': chamado.criado_em,
+            'autor': chamado.criado_por,
+            'titulo': 'Chamado Aberto',
+            'descricao': f"Chamado registrado por {chamado.criado_por.get_full_name() or chamado.criado_por.username}"
+        })
+
+        for m in chamado.mudancas_status.select_related('alterado_por'):
+            eventos.append({
+                'tipo': 'mudanca_status',
+                'data': m.alterado_em,
+                'autor': m.alterado_por,
+                'titulo': f"Status alterado: {m.get_de_status_display()} &rarr; {m.get_para_status_display()}",
+                'motivo': m.comentario_motivo,
+                'descricao': f"Alterado por {m.alterado_por.get_full_name() or m.alterado_por.username}"
+            })
+
+        for c in context['comentarios']:
+            eventos.append({
+                'tipo': 'comentario',
+                'data': c.criado_em,
+                'autor': c.autor,
+                'titulo': f"Comentário de {c.autor.get_full_name() or c.autor.username}",
+                'descricao': c.texto
+            })
+
+        for a in context['anexos']:
+            eventos.append({
+                'tipo': 'anexo',
+                'data': a.enviado_em,
+                'autor': a.enviado_por,
+                'titulo': f"Anexo adicionado: {a.nome_original}",
+                'descricao': f"Enviado por {a.enviado_por.get_full_name() or a.enviado_por.username}"
+            })
+
+        eventos.sort(key=lambda x: x['data'], reverse=True)
+        context['linha_do_tempo'] = eventos
+
         return context
 
 
@@ -145,6 +192,8 @@ class ChamadoCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        if self.object.responsavel:
+            notificar_atribuicao(self.object, self.request.user)
         messages.success(self.request, f"Chamado {self.object.codigo} aberto com sucesso!")
         return response
 
@@ -170,7 +219,10 @@ class ChamadoUpdateView(AdminRequiredMixin, UpdateView):
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
+        responsavel_antigo = self.get_object().responsavel
         response = super().form_valid(form)
+        if self.object.responsavel and self.object.responsavel != responsavel_antigo:
+            notificar_atribuicao(self.object, self.request.user)
         messages.success(self.request, f"Chamado {self.object.codigo} atualizado com sucesso!")
         return response
 
@@ -190,8 +242,91 @@ class ChamadoMudarStatusView(LoginRequiredMixin, View):
         except ValidationError as e:
             messages.error(request, e.message if hasattr(e, 'message') else str(e))
 
-        # Se a requisição veio de HTMX
         if request.headers.get('HX-Request'):
             return HttpResponse(status=204, headers={'HX-Refresh': 'true'})
 
         return redirect('chamados:chamado_detail', pk=chamado.pk)
+
+
+class ComentarioCreateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        chamado = get_object_or_404(Chamado, pk=pk)
+
+        # Checa permissão de visualização
+        if not getattr(request.user, 'is_admin', False):
+            if chamado.responsavel != request.user and chamado.criado_por != request.user:
+                raise PermissionDenied("Você não tem permissão para comentar neste chamado.")
+
+        form = ComentarioForm(request.POST)
+        if form.is_valid():
+            comentario = form.save(commit=False)
+            comentario.chamado = chamado
+            comentario.autor = request.user
+            comentario.save()
+
+            notificar_comentario(chamado, comentario, request.user)
+            messages.success(request, "Comentário adicionado com sucesso.")
+
+            if request.headers.get('HX-Request'):
+                comentarios = chamado.comentarios.select_related('autor').order_by('criado_em')
+                return render(request, 'chamados/partials/comentarios_list.html', {
+                    'comentarios': comentarios,
+                    'chamado': chamado,
+                    'comentario_form': ComentarioForm(),
+                })
+        else:
+            messages.error(request, "Erro ao enviar comentário. O campo não pode ser vazio.")
+
+        if request.headers.get('HX-Request'):
+            return HttpResponse(status=204, headers={'HX-Refresh': 'true'})
+
+        return redirect('chamados:chamado_detail', pk=chamado.pk)
+
+
+class AnexoUploadView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        chamado = get_object_or_404(Chamado, pk=pk)
+
+        # Checa permissão de visualização
+        if not getattr(request.user, 'is_admin', False):
+            if chamado.responsavel != request.user and chamado.criado_por != request.user:
+                raise PermissionDenied("Você não tem permissão para anexar arquivos neste chamado.")
+
+        arquivo = request.FILES.get('arquivo')
+        if not arquivo:
+            messages.error(request, "Nenhum arquivo foi selecionado.")
+            return redirect('chamados:chamado_detail', pk=chamado.pk)
+
+        # Validação do limite de 10 MB
+        tamanho = getattr(arquivo, '_size', None) or getattr(arquivo, 'size', 0)
+        if tamanho > Anexo.LIMITE_TAMANHO_BYTES:
+            messages.error(request, "O arquivo excede o limite máximo permitido de 10 MB.")
+            return redirect('chamados:chamado_detail', pk=chamado.pk)
+
+        form = AnexoForm(request.POST, request.FILES)
+        if form.is_valid():
+            anexo = form.save(commit=False)
+            anexo.chamado = chamado
+            anexo.enviado_por = request.user
+            anexo.nome_original = arquivo.name
+            anexo.save()
+            messages.success(request, f"Arquivo '{anexo.nome_original}' anexado com sucesso.")
+        else:
+            for error in form.errors.values():
+                messages.error(request, error)
+
+        return redirect('chamados:chamado_detail', pk=chamado.pk)
+
+
+class AnexoDownloadView(LoginRequiredMixin, View):
+    def get(self, request, pk, anexo_pk):
+        chamado = get_object_or_404(Chamado, pk=pk)
+
+        # Permissão de download só para quem vê o chamado
+        if not getattr(request.user, 'is_admin', False):
+            if chamado.responsavel != request.user and chamado.criado_por != request.user:
+                raise PermissionDenied("Você não tem permissão para baixar anexos deste chamado.")
+
+        anexo = get_object_or_404(Anexo, pk=anexo_pk, chamado=chamado)
+        return FileResponse(anexo.arquivo.open('rb'), as_attachment=True, filename=anexo.nome_original)
+
