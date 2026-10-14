@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestão de Chamados{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- HTMX CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full text-slate-800 antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <div class="min-h-full flex flex-col md:flex-row">
+        <!-- Sidebar Navigation -->
+        {% if user.is_authenticated %}
+        <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col">
+            <div class="p-5 flex items-center justify-between md:justify-start space-x-3 border-b border-slate-800">
+                <div class="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow">
+                    G
+                </div>
+                <div>
+                    <h1 class="text-white font-semibold tracking-wide text-base">Chamados App</h1>
+                    <span class="text-xs text-slate-400">Gestão de Demandas</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <a href="{% url 'dashboard:index' %}" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if request.resolver_match.view_name == 'dashboard:index' %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                    </svg>
+                    Dashboard
+                </a>
+
+                <a href="/chamados/" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/chamados/' in request.path and not '/kanban/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    Chamados
+                </a>
+
+                <a href="/chamados/kanban/" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/kanban/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                    </svg>
+                    Kanban
+                </a>
+
+                {% if user.is_admin %}
+                <div class="pt-4 pb-1">
+                    <span class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Administração</span>
+                </div>
+
+                <a href="/plataformas/" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/plataformas/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                    </svg>
+                    Plataformas
+                </a>
+
+                <a href="{% url 'accounts:usuario_list' %}" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/usuarios/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    Usuários
+                </a>
+
+                <a href="/relatorios/" class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/relatorios/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Relatórios
+                </a>
+                {% endif %}
+
+                <div class="pt-4 pb-1">
+                    <span class="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Outros</span>
+                </div>
+
+                <a href="/notificacoes/" class="flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition hover:bg-slate-800 hover:text-white {% if '/notificacoes/' in request.path %}bg-slate-800 text-white{% endif %}">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        Notificações
+                    </div>
+                    {% if notificacoes_nao_lidas_count > 0 %}
+                    <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                        {{ notificacoes_nao_lidas_count }}
+                    </span>
+                    {% endif %}
+                </a>
+            </nav>
+
+            <!-- User Info Sidebar Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950">
+                <div class="flex items-center space-x-3">
+                    {% if user.avatar %}
+                    <img src="{{ user.avatar.url }}" alt="Avatar" class="w-9 h-9 rounded-full object-cover border border-slate-700">
+                    {% else %}
+                    <div class="w-9 h-9 rounded-full bg-slate-700 text-slate-200 flex items-center justify-center font-semibold text-sm">
+                        {{ user.username|slice:":2"|upper }}
+                    </div>
+                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate">
+                            {{ user.get_full_name|default:user.username }}
+                        </p>
+                        <p class="text-xs text-slate-400 capitalize">
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium {% if user.is_admin %}bg-purple-900 text-purple-200{% else %}bg-blue-900 text-blue-200{% endif %}">
+                                {{ user.get_papel_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Top Navbar -->
+            {% if user.is_authenticated %}
+            <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 z-10">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800">
+                        {% block header_title %}Painel de Chamados{% endblock %}
+                    </h2>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <!-- Notification Bell -->
+                    <a href="/notificacoes/" class="relative p-2 text-slate-500 hover:text-slate-700 rounded-full hover:bg-slate-100 transition" title="Notificações">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        {% if notificacoes_nao_lidas_count > 0 %}
+                        <span class="absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-red-600"></span>
+                        {% endif %}
+                    </a>
+
+                    <!-- User Dropdown / Links -->
+                    <div class="flex items-center space-x-3 text-sm">
+                        <a href="{% url 'accounts:trocar_senha' %}" class="text-slate-600 hover:text-blue-600 font-medium">Trocar Senha</a>
+                        <span class="text-slate-300">|</span>
+                        <form method="post" action="{% url 'accounts:logout' %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Sair</button>
+                        </form>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+
+            <!-- Django Messages -->
+            {% if messages %}
+            <div class="px-4 sm:px-6 pt-4 space-y-2">
+                {% for message in messages %}
+                <div class="p-4 rounded-lg flex items-center justify-between text-sm shadow-sm transition
+                    {% if message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+                    {% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200
+                    {% elif message.tags == 'info' %}bg-blue-50 text-blue-800 border border-blue-200
+                    {% else %}bg-green-50 text-green-800 border border-green-200{% endif %}">
+                    <span>{{ message }}</span>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 font-bold ml-4">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Main Page Content -->
+            <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

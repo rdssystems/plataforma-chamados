@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — Gestão de Chamados{% endblock %}
+{% block header_title %}Painel Principal{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="text-xl font-bold text-slate-800">Bem-vindo, {{ user.get_full_name|default:user.username }}!</h3>
+        <p class="text-slate-500 text-sm mt-1">
+            Você está conectado como <strong class="text-blue-600">{{ user.get_papel_display }}</strong>.
+        </p>
+    </div>
+</div>
+{% endblock %}

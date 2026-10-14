@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuários — Gestão de Chamados{% endblock %}
+{% block header_title %}Controle de Usuários{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Top Action Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h3 class="text-xl font-bold text-slate-800">Contas de Usuários</h3>
+            <p class="text-sm text-slate-500">Gerencie o acesso de desenvolvedores e administradores.</p>
+        </div>
+        <div>
+            <a href="{% url 'accounts:usuario_create' %}" class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Novo Usuário
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="sm:col-span-2">
+                <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nome, usuário ou e-mail..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <select name="papel" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos os Papéis</option>
+                    <option value="admin" {% if papel == 'admin' %}selected{% endif %}>Administrador</option>
+                    <option value="dev" {% if papel == 'dev' %}selected{% endif %}>Desenvolvedor</option>
+                </select>
+            </div>
+            <div class="flex space-x-2">
+                <select name="status" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">Todos os Status</option>
+                    <option value="ativo" {% if status == 'ativo' %}selected{% endif %}>Ativo</option>
+                    <option value="inativo" {% if status == 'inativo' %}selected{% endif %}>Inativo</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition">
+                    Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Users Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm text-left">
+                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase text-xs">
+                    <tr>
+                        <th class="px-6 py-3.5">Usuário</th>
+                        <th class="px-6 py-3.5">Papel</th>
+                        <th class="px-6 py-3.5">Status</th>
+                        <th class="px-6 py-3.5">Primeiro Acesso</th>
+                        <th class="px-6 py-3.5 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 text-slate-700">
+                    {% for u in usuarios %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-6 py-4 flex items-center space-x-3">
+                            {% if u.avatar %}
+                            <img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-9 h-9 rounded-full object-cover border">
+                            {% else %}
+                            <div class="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+                                {{ u.username|slice:":2"|upper }}
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="font-medium text-slate-900">{{ u.get_full_name|default:u.username }}</p>
+                                <p class="text-xs text-slate-500">@{{ u.username }} • {{ u.email|default:"Sem e-mail" }}</p>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+                                {% if u.is_admin %}bg-purple-100 text-purple-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ u.get_papel_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if u.is_active %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                Ativo
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
+                                Inativo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if u.deve_trocar_senha %}
+                            <span class="inline-flex items-center text-xs text-amber-600 font-medium">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                Troca pendente
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-slate-500">Senha regularizada</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-2">
+                            <a href="{% url 'accounts:usuario_update' u.pk %}" class="inline-block text-blue-600 hover:text-blue-800 font-medium text-xs">
+                                Editar
+                            </a>
+                            <a href="{% url 'accounts:usuario_redefinir_senha' u.pk %}" class="inline-block text-amber-600 hover:text-amber-800 font-medium text-xs">
+                                Redefinir Senha
+                            </a>
+                            {% if u != user %}
+                            <form method="post" action="{% url 'accounts:usuario_toggle' u.pk %}" class="inline" onsubmit="return confirm('Tem certeza que deseja {% if u.is_active %}desativar{% else %}ativar{% endif %} este usuário?')">
+                                {% csrf_token %}
+                                <button type="submit" class="text-xs font-medium {% if u.is_active %}text-rose-600 hover:text-rose-800{% else %}text-emerald-600 hover:text-emerald-800{% endif %}">
+                                    {% if u.is_active %}Desativar{% else %}Ativar{% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-slate-500 text-sm">
+                            Nenhum usuário encontrado com os filtros selecionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <div class="space-x-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if papel %}&papel={{ papel }}{% endif %}{% if status %}&status={{ status }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Anterior</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if papel %}&papel={{ papel }}{% endif %}{% if status %}&status={{ status }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Próxima</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
