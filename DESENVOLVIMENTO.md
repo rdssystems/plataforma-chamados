@@ -19,7 +19,9 @@
 - Disco raiz (`/`) é somente-leitura/cheio por design do ZimaOS; dados e Docker ficam em `/DATA`.
 - O usuário `klismanrds` não está no grupo `docker`: comandos Docker precisam de `sudo`.
 - Portas **80/443 ocupadas** pelo gateway do ZimaOS → por isso o app usa `compose.vps.yaml` (porta 8030, HTTP).
-- Outros apps na mesma VPS (não mexer): `naicas-app` (8020), `gerenciamento-web-1`, `nextcloud` (10081/10443), `tailscale`.
+- Outros apps na mesma VPS (não mexer sem combinar): `naicas-app` (127.0.0.1:8020, público via Funnel), `gerenciamento-web-1`, `nextcloud` (10081/10443), `tailscale`.
+- **Tailscale Funnel** (desde 2026-11-13): https://servidor-test.taile3dafe.ts.net (porta 443) → Naicas. HTTPS e Funnel já estão habilitados na tailnet. Se a Plataforma de Chamados precisar de HTTPS público, usar as portas de Funnel **8443** ou **10000** (`sudo docker exec tailscale tailscale funnel --bg --https=8443 8030`), e então ajustar `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e `SECURE_SSL=True`.
+- O Naicas tem deploy automático (`naicas-update.timer`, a cada minuto, mantido pelo Isaque Miranda) e regras próprias no `CLAUDE.md` do repositório dele.
 - Acesso é por HTTP dentro do Tailscale (tráfego já criptografado pelo WireGuard). Por isso `SECURE_SSL=False`.
 - Não há `openssl` na VPS: gerar segredos com `head -c 48 /dev/urandom | od -An -tx1 | tr -d " \n"`.
 - Containers do app: `db` (Postgres 16), `redis` (eventos em tempo real, sem persistência), `web` (Daphne, HTTP + WebSocket), `proxy` (Caddy, porta 8030).
