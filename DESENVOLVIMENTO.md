@@ -49,10 +49,9 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
 - Adicionado `SECURE_SSL` em `config/settings.py` (padrão `True`; `False` desliga redirect HTTPS e cookies Secure para uso via Tailscale/HTTP).
 - Criados `compose.vps.yaml`, `Caddyfile.vps` e `.env.vps.example` para deploy na VPS sem usar 80/443.
 - **Deploy concluído**: containers `db`, `web`, `proxy` saudáveis; migrações aplicadas; login em http://100.124.217.8:8030/login/ responde 200. Usuário admin criado (`admin`, senha entregue ao usuário e a trocar no primeiro acesso).
+- **Banco local migrado para a VPS** (dumpdata → loaddata no Postgres): 2 usuários (`admin`, `Isaque`), 1 plataforma, 2 chamados, 5 mudanças de status, 1 anexo, 3 notificações, 9 históricos; pasta `media` copiada para o volume `media_data`. O admin criado no deploy foi substituído pelo `admin` local (mesma senha do ambiente local). Histórico de chamados já apagados (361 linhas órfãs) não foi migrado.
 
 ## Pendências / próximos passos
-- [ ] Trocar a senha do `admin` no primeiro acesso.
 - [ ] Dar `git push` do commit local (arquivos de deploy foram copiados à VPS por SFTP; se o `git pull` na VPS acusar conflito, rodar `git checkout -- .` antes).
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).
 - [ ] Rotina de backup do Postgres e dos anexos (volumes `postgres_data` e `media_data`).
-- [ ] Migrar dados do `db.sqlite3` local, se necessário.
