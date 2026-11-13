@@ -27,12 +27,15 @@
 
 ## Como fazer deploy / atualizar
 
+Depois de dar `git push` das alterações:
 ```bash
 ssh klismanrds@100.124.217.8
 cd /DATA/AppData/plataforma-chamados
-git pull
-sudo docker compose -f compose.vps.yaml --env-file .env.production up -d --build
+./atualizar.sh
 ```
+O [atualizar.sh](atualizar.sh) mostra os commits que vão entrar, pergunta antes de aplicar, faz backup do banco em `/DATA/Backup/plataforma-chamados/`, baixa o código (`git pull` só fast-forward), reconstrói e reinicia os containers (migrações automáticas), espera o app ficar saudável, testa o login e limpa imagens antigas. Se algo falhar, mostra como voltar à versão anterior. Opções: `--sim` (não pergunta), `--forcar` (reconstrói mesmo sem commits novos), `--help`.
+
+Se houver arquivos editados à mão na VPS, o script para sem descartar nada e mostra quais são.
 
 Outros comandos úteis (todos a partir da pasta do app):
 ```bash
