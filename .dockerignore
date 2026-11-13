@@ -19,3 +19,11 @@ media
 staticfiles
 .vscode
 .idea
+
+# Documentação e scripts de deploy não fazem parte da imagem: mudar só eles
+# não deve gerar uma imagem nova nem reiniciar o app.
+*.md
+*.md.txt
+atualizar.sh
+compose*.yaml
+Caddyfile*

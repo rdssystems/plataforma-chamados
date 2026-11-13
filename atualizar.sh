@@ -49,7 +49,7 @@ main() {
         case "$arg" in
             --sim)      PERGUNTAR=0 ;;
             --forcar)   FORCAR=1 ;;
-            -h|--help)  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^#  \{0,1\}//'; return 0 ;;
+            -h|--help)  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,2\}//'; return 0 ;;
             *)          erro "Opção desconhecida: $arg (use --help)"; exit 1 ;;
         esac
     done

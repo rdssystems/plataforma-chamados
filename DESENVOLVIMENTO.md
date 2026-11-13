@@ -77,8 +77,13 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Infra: Gunicorn → Daphne (ASGI); novo container `redis`; `CHANNEL_LAYERS` usa Redis quando há `REDIS_URL`, senão memória (dev/testes).
   - Validação: 23 testes novos (69 no total, todos passando); teste ponta a ponta com dois usuários e WebSocket real numa pilha de teste isolada na VPS (porta 8031, depois removida); backup `antes-do-chat-20261113-134806.dump` feito antes do deploy; produção atualizada, migração `chat.0001` aplicada.
 
+- **Deploy pelo Git + `atualizar.sh`**:
+  - Push de todos os commits para o GitHub. O repositório é **público**; por decisão do usuário, o diário (IP do Tailscale e usuário SSH, sem senhas) foi publicado como está.
+  - A pasta da VPS tinha arquivos enviados por SFTP. Conferi arquivo por arquivo (hash do Git) que só diferiam em fim de linha (CRLF) e alinhei com `git reset --hard origin/master`. A VPS agora segue o GitHub sem alterações locais.
+  - Criado `atualizar.sh` (deploy guiado com backup, verificação de saúde e instruções de rollback) e `.gitattributes` (força LF em `.sh`, Dockerfile e Caddyfile).
+  - `.dockerignore` passou a excluir `*.md`, `atualizar.sh`, compose e Caddyfile: commits só de documentação não geram imagem nova nem reiniciam o app.
+
 ## Pendências / próximos passos
-- [ ] Dar `git push` dos commits locais (arquivos foram copiados à VPS por SFTP; se o `git pull` na VPS acusar conflito, rodar `git checkout -- .` antes).
 - [ ] Testar o chat no navegador com dois usuários reais (interface não foi vista em navegador, só validada via HTTP/WebSocket).
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).
 - [ ] Rotina de backup do Postgres e dos anexos (volumes `postgres_data` e `media_data`).
