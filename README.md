@@ -93,6 +93,39 @@ python manage.py runserver
 ```
 Acesse no navegador: **`http://127.0.0.1:8000/`**
 
+### 9. Publicar em uma VPS com Docker
+
+Na VPS, instale Docker Engine e o plugin Docker Compose, clone o repositório e entre na pasta do projeto. Aponte o DNS do domínio para o IP da VPS e libere as portas **80** e **443** no firewall.
+
+Crie o arquivo de ambiente de produção:
+```bash
+cp .env.production.example .env.production
+openssl rand -hex 48
+openssl rand -hex 32
+```
+Edite `.env.production`: use a primeira saída como `SECRET_KEY`, a segunda como `POSTGRES_PASSWORD` e troque `chamados.example.com` pelo domínio real em `DOMAIN`, `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS`. Mantenha a senha do banco em hexadecimal para evitar caracteres que precisariam de escape na URL de conexão.
+
+Construa e inicie os serviços:
+```bash
+docker compose --env-file .env.production up -d --build
+```
+O primeiro início aplica as migrações e coleta os arquivos estáticos automaticamente. O Caddy configura HTTPS para o domínio; os dados do PostgreSQL e anexos ficam em volumes persistentes. Para acompanhar a inicialização:
+```bash
+docker compose --env-file .env.production logs -f
+```
+
+Crie o administrador:
+```bash
+docker compose --env-file .env.production exec web python manage.py criar_admin
+```
+
+Para atualizar após enviar novas alterações ao repositório:
+```bash
+git pull
+docker compose --env-file .env.production up -d --build
+```
+`docker compose down` para os serviços sem apagar os dados. Não use `docker compose down -v`, pois isso remove também os volumes do banco e dos anexos. Faça backups regulares do banco e dos anexos.
+
 ---
 
 ## 🧪 Executando os Testes Automatizados
