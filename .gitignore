@@ -29,18 +29,30 @@ wheels/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media/
-staticfiles/
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-journal
+/media/
+/staticfiles/
 
 # Environment
 .env
+.env.*
+!.env.example
+.envrc
 
 # Pytest / Coverage
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
+
+# OS
+.DS_Store
+Thumbs.db
