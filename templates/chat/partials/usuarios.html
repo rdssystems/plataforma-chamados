@@ -1,0 +1,23 @@
+<div data-online-count="{{ total_online }}" class="space-y-0.5">
+    {% for u in usuarios %}
+    <div class="flex items-center justify-between gap-2 px-2 py-2 rounded-lg hover:bg-slate-50">
+        <div class="flex items-center gap-3 min-w-0">
+            {% include 'chat/partials/avatar.html' with pessoa=u online=u.online mostrar_status=True %}
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-slate-800 truncate">{{ u.get_full_name|default:u.username }}</p>
+                <p class="text-xs {% if u.online %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                    {% if u.online %}Online{% else %}Offline{% endif %}
+                </p>
+            </div>
+        </div>
+        <form method="post" action="{% url 'chat:iniciar' u.pk %}" class="flex-shrink-0">
+            {% csrf_token %}
+            <button type="submit" class="text-xs font-semibold text-blue-600 hover:text-blue-800 px-2.5 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 transition">
+                Conversar
+            </button>
+        </form>
+    </div>
+    {% empty %}
+    <p class="px-2 py-4 text-sm text-slate-400 text-center">Nenhum outro usuário ativo.</p>
+    {% endfor %}
+</div>

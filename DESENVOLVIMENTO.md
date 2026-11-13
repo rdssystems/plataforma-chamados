@@ -21,6 +21,9 @@
 - Portas **80/443 ocupadas** pelo gateway do ZimaOS → por isso o app usa `compose.vps.yaml` (porta 8030, HTTP).
 - Outros apps na mesma VPS (não mexer): `naicas-app` (8020), `gerenciamento-web-1`, `nextcloud` (10081/10443), `tailscale`.
 - Acesso é por HTTP dentro do Tailscale (tráfego já criptografado pelo WireGuard). Por isso `SECURE_SSL=False`.
+- Não há `openssl` na VPS: gerar segredos com `head -c 48 /dev/urandom | od -An -tx1 | tr -d " \n"`.
+- Containers do app: `db` (Postgres 16), `redis` (eventos em tempo real, sem persistência), `web` (Daphne, HTTP + WebSocket), `proxy` (Caddy, porta 8030).
+- Backups manuais ficam em `/DATA/Backup/plataforma-chamados/`.
 
 ## Como fazer deploy / atualizar
 
@@ -39,6 +42,19 @@ sudo docker compose -f compose.vps.yaml --env-file .env.production ps
 ```
 **Nunca** usar `down -v` (apaga banco e anexos).
 
+Backup do banco antes de deploys com migração:
+```bash
+sudo sh -c 'docker compose -f compose.vps.yaml --env-file .env.production exec -T db sh -c "pg_dump -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Fc" > /DATA/Backup/plataforma-chamados/backup-$(date +%Y%m%d-%H%M%S).dump'
+```
+
+Pilha de teste isolada (não toca na produção; usar para validar mudanças antes do deploy):
+```bash
+# .env.teste com WEB_PORT=8031, CSRF_TRUSTED_ORIGINS=http://100.124.217.8:8031 e banco/senha próprios
+sudo APP_ENV_FILE=.env.teste docker compose -p chamados-teste -f compose.vps.yaml --env-file .env.teste up -d --build
+# ... testar em http://100.124.217.8:8031 ...
+sudo APP_ENV_FILE=.env.teste docker compose -p chamados-teste -f compose.vps.yaml --env-file .env.teste down -v   # -p chamados-teste é obrigatório!
+```
+
 O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.example`.
 
 ## Histórico
@@ -50,8 +66,16 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
 - Criados `compose.vps.yaml`, `Caddyfile.vps` e `.env.vps.example` para deploy na VPS sem usar 80/443.
 - **Deploy concluído**: containers `db`, `web`, `proxy` saudáveis; migrações aplicadas; login em http://100.124.217.8:8030/login/ responde 200. Usuário admin criado (`admin`, senha entregue ao usuário e a trocar no primeiro acesso).
 - **Banco local migrado para a VPS** (dumpdata → loaddata no Postgres): 2 usuários (`admin`, `Isaque`), 1 plataforma, 2 chamados, 5 mudanças de status, 1 anexo, 3 notificações, 9 históricos; pasta `media` copiada para o volume `media_data`. O admin criado no deploy foi substituído pelo `admin` local (mesma senha do ambiente local). Histórico de chamados já apagados (361 linhas órfãs) não foi migrado.
+- **Chat em tempo real** (app `chat`):
+  - Conversas diretas entre dois usuários (uma por par), histórico permanente (FKs `PROTECT`, admin somente leitura, sem tela de apagar). Usuário desativado: histórico visível, envio bloqueado.
+  - Página `/chat/` com abas **Conversas** e **Online**; botão **Online (N)** no topo de todas as páginas com a lista de usuários e o botão "Conversar"; contador de não lidas no menu; avisos (toasts) de mensagens novas.
+  - Presença: cada aba abre um WebSocket (`/ws/app/`) e envia ping a cada 25 s; offline quando todas as abas fecham ou após 70 s sem sinal (modelo `Presenca`).
+  - Notificações de chamados agora chegam em tempo real (signal em `notificacoes/signals.py`), atualizando sino e contador.
+  - Infra: Gunicorn → Daphne (ASGI); novo container `redis`; `CHANNEL_LAYERS` usa Redis quando há `REDIS_URL`, senão memória (dev/testes).
+  - Validação: 23 testes novos (69 no total, todos passando); teste ponta a ponta com dois usuários e WebSocket real numa pilha de teste isolada na VPS (porta 8031, depois removida); backup `antes-do-chat-20261113-134806.dump` feito antes do deploy; produção atualizada, migração `chat.0001` aplicada.
 
 ## Pendências / próximos passos
-- [ ] Dar `git push` do commit local (arquivos de deploy foram copiados à VPS por SFTP; se o `git pull` na VPS acusar conflito, rodar `git checkout -- .` antes).
+- [ ] Dar `git push` dos commits locais (arquivos foram copiados à VPS por SFTP; se o `git pull` na VPS acusar conflito, rodar `git checkout -- .` antes).
+- [ ] Testar o chat no navegador com dois usuários reais (interface não foi vista em navegador, só validada via HTTP/WebSocket).
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).
 - [ ] Rotina de backup do Postgres e dos anexos (volumes `postgres_data` e `media_data`).

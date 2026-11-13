@@ -11,6 +11,7 @@ urlpatterns = [
     path('', include('notificacoes.urls')),
     path('', include('dashboard.urls')),
     path('', include('relatorios.urls')),
+    path('', include('chat.urls')),
 ]
 
 if settings.DEBUG:

@@ -11,6 +11,7 @@ Sistema web completo de triagem, acompanhamento e relatórios de chamados técni
 - **Frontend Interativo:** Templates Django server-side, [Tailwind CSS](https://tailwindcss.com) (CDN), [HTMX](https://htmx.org) (comentários reativos e updates sem reload), [SortableJS](https://sortablejs.github.io/Sortable/) (Kanban drag-and-drop) e [Chart.js](https://www.chartjs.org/) (gráficos interativos de evolução semanal, plataformas, desenvolvedores e prioridades).
 - **Exportações:** [openpyxl](https://openpyxl.readthedocs.io/) (relatórios Excel com abas e formatação profissional) e [xhtml2pdf / WeasyPrint](https://xhtml2pdf.readthedocs.io/) (relatórios gerenciais em PDF).
 - **Auditoria:** [django-simple-history](https://django-simple-history.readthedocs.io/) e histórico centralizado de mudanças de status.
+- **Tempo real:** [Django Channels](https://channels.readthedocs.io/) (WebSocket) servido pelo [Daphne](https://github.com/django/daphne), com Redis em produção, para o chat entre usuários, a lista de quem está online e as notificações instantâneas.
 - **Testes Automatizados:** [pytest](https://docs.pytest.org/) e [pytest-django](https://pytest-django.readthedocs.io/).
 
 ---
@@ -93,6 +94,8 @@ python manage.py runserver
 ```
 Acesse no navegador: **`http://127.0.0.1:8000/`**
 
+O `runserver` já sobe com o Daphne, então o chat e as notificações em tempo real funcionam em desenvolvimento sem Redis (a camada de eventos fica em memória). Em produção, defina `REDIS_URL` (os arquivos compose já fazem isso).
+
 ### 9. Publicar em uma VPS com Docker
 
 Na VPS, instale Docker Engine e o plugin Docker Compose, clone o repositório e entre na pasta do projeto. Aponte o DNS do domínio para o IP da VPS e libere as portas **80** e **443** no firewall.
@@ -109,7 +112,7 @@ Construa e inicie os serviços:
 ```bash
 docker compose --env-file .env.production up -d --build
 ```
-O primeiro início aplica as migrações e coleta os arquivos estáticos automaticamente. O Caddy configura HTTPS para o domínio; os dados do PostgreSQL e anexos ficam em volumes persistentes. Para acompanhar a inicialização:
+O primeiro início aplica as migrações e coleta os arquivos estáticos automaticamente. O Caddy configura HTTPS para o domínio (e repassa o WebSocket do chat sem configuração extra); os dados do PostgreSQL e anexos ficam em volumes persistentes. O Redis só distribui eventos em tempo real e não guarda dados. Para acompanhar a inicialização:
 ```bash
 docker compose --env-file .env.production logs -f
 ```
@@ -152,7 +155,8 @@ pytest -v
 ├── chamados/           # Chamados, transições de status (services.py), kanban, comentários e anexos
 ├── dashboard/          # Cards de indicadores, endpoint de gráficos Chart.js e listas de atenção
 ├── relatorios/         # Serviço unificado de métricas (services.py) e exportadores (Excel e PDF)
-├── notificacoes/       # Central e sino de notificações no topo
+├── notificacoes/       # Central e sino de notificações no topo (com aviso em tempo real)
+├── chat/               # Chat direto entre usuários, presença online e WebSocket (consumers.py)
 ├── templates/          # Templates HTML Django com Tailwind CSS
 └── static/             # Arquivos estáticos (JavaScript, CSS, ícones)
 ```
@@ -165,4 +169,5 @@ pytest -v
 - **Primeiro Acesso:** Usuários cadastrados com senha provisória têm `deve_trocar_senha=True` e são obrigatoriamente redirecionados à tela de troca de senha até concluírem o processo.
 - **Serviço Único de Transição (`chamados/services.py:mudar_status`):** Todas as transições de status (pelo detalhe, pelo formulário ou por arraste no Kanban) passam pelo mesmo serviço centralizado. Transições fora do fluxo especificado são recusadas e registradas.
 - **Cálculo Unificado de Métricas (`relatorios/services.py:calcular_metricas_relatorio`):** Garante total consistência: os números exibidos na tela de relatórios batem com exatidão com os arquivos exportados em Excel e PDF.
+- **Chat permanente:** Conversas são diretas entre dois usuários (uma por par). Mensagens não podem ser editadas nem apagadas (as chaves usam `PROTECT` e o admin é somente leitura). Usuários desativados mantêm o histórico visível, mas não recebem novas mensagens. Só os participantes acessam uma conversa.
 - **Desempenho no Banco:** O dashboard carrega com apenas 8 consultas SQL agregadas via ORM (`aggregate`, `annotate`, `TruncWeek`), muito abaixo do teto de 15 queries exigido.

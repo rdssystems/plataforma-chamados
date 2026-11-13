@@ -27,4 +27,5 @@ USER app
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120 --access-logfile - --error-logfile -"]
+# Daphne serve HTTP e WebSocket (chat/notificações em tempo real) pelo mesmo ASGI.
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && daphne --bind 0.0.0.0 --port 8000 --proxy-headers config.asgi:application"]

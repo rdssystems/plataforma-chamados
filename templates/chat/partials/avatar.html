@@ -1,0 +1,14 @@
+{# Uso: {% include 'chat/partials/avatar.html' with pessoa=u online=u.online mostrar_status=True %} #}
+<div class="relative flex-shrink-0">
+    {% if pessoa.avatar %}
+    <img src="{{ pessoa.avatar.url }}" alt="" class="w-9 h-9 rounded-full object-cover border border-slate-200">
+    {% else %}
+    <div class="w-9 h-9 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-semibold text-xs">
+        {{ pessoa.username|slice:":2"|upper }}
+    </div>
+    {% endif %}
+    {% if mostrar_status %}
+    <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white {% if online %}bg-emerald-500{% else %}bg-slate-300{% endif %}"
+          title="{% if online %}Online{% else %}Offline{% endif %}"></span>
+    {% endif %}
+</div>

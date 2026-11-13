@@ -28,6 +28,8 @@ CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [
+    # Daphne precisa vir primeiro: faz o runserver servir ASGI (HTTP + WebSocket).
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +47,7 @@ INSTALLED_APPS = [
     'notificacoes.apps.NotificacoesConfig',
     'dashboard.apps.DashboardConfig',
     'relatorios.apps.RelatoriosConfig',
+    'chat.apps.ChatConfig',
 ]
 
 MIDDLEWARE = [
@@ -73,12 +76,28 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'notificacoes.context_processors.notificacoes_context',
+                'chat.context_processors.chat_context',
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+# Tempo real (chat, presença e notificações). Com REDIS_URL definido, os eventos
+# passam pelo Redis (produção); sem ele, ficam em memória (desenvolvimento/testes,
+# válido só com um processo).
+REDIS_URL = config('REDIS_URL', default='')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [REDIS_URL]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
