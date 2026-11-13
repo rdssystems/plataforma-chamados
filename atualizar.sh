@@ -214,7 +214,7 @@ main() {
         false
     fi
     ok "Tela de login respondendo (HTTP 200)."
-    compose ps --format '      {{.Service}}: {{.Status}}'
+    compose ps --format '{{.Service}}: {{.Status}}' | sed 's/^/      /'
 
     # =========================================================================
     etapa 7 "Limpando imagens antigas deste app"
