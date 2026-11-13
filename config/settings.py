@@ -124,7 +124,9 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:index'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-if not DEBUG:
+# SECURE_SSL=False permite servir por HTTP puro (ex.: rede privada Tailscale).
+SECURE_SSL = config('SECURE_SSL', default=True, cast=bool)
+if not DEBUG and SECURE_SSL:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000

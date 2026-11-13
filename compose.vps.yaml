@@ -1,0 +1,60 @@
+# Deploy na VPS ZimaOS (acesso via Tailscale, HTTP, porta 8030).
+# As portas 80/443 pertencem ao gateway do ZimaOS, por isso nao usamos o compose.yaml.
+# Uso: docker compose -f compose.vps.yaml --env-file .env.production up -d --build
+name: plataforma-chamados
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no .env.production}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env.production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DEBUG: "False"
+    expose:
+      - "8000"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8030}:80"
+    volumes:
+      - ./Caddyfile.vps:/etc/caddy/Caddyfile:ro
+      - static_data:/srv/static:ro
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  media_data:
+  static_data:

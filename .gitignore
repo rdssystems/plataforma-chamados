@@ -41,6 +41,7 @@ db.sqlite3-journal
 .env.*
 !.env.example
 !.env.production.example
+!.env.vps.example
 .envrc
 
 # Pytest / Coverage
