@@ -55,7 +55,7 @@
 
     function tratar(dados) {
         if (dados.tipo === 'chat.mensagem') {
-            atualizarContador(document.getElementById('chat-badge'), dados.nao_lidas_total);
+            atualizarContador('[data-contador-chat]', dados.nao_lidas_total);
             var m = dados.mensagem;
             var conversaVisivel = window.chatConversaAberta === m.conversa_id && !document.hidden;
             if (m.autor_id !== cfg.usuarioId && !conversaVisivel) {
@@ -63,22 +63,23 @@
             }
             atualizarConversas();
         } else if (dados.tipo === 'chat.lida') {
-            atualizarContador(document.getElementById('chat-badge'), dados.nao_lidas_total);
+            atualizarContador('[data-contador-chat]', dados.nao_lidas_total);
             atualizarConversas();
         } else if (dados.tipo === 'notificacao') {
-            atualizarContador(document.getElementById('notif-badge'), dados.nao_lidas);
-            var ponto = document.getElementById('notif-dot');
-            if (ponto) ponto.classList.toggle('hidden', !dados.nao_lidas);
+            atualizarContador('[data-contador-notificacoes]', dados.nao_lidas);
             mostrarAviso('Notificação', dados.mensagem, dados.url);
         } else if (dados.tipo === 'presenca') {
             atualizarUsuarios();
         }
     }
 
-    function atualizarContador(el, valor) {
-        if (!el) return;
-        el.textContent = valor;
-        el.classList.toggle('hidden', !valor);
+    // Contadores aparecem na barra e no menu lateral: atualiza todos.
+    function atualizarContador(seletor, valor) {
+        document.querySelectorAll(seletor).forEach(function (el) {
+            var alvo = el.querySelector('[data-contador-valor]') || el;
+            alvo.textContent = valor;
+            el.classList.toggle('d-none', !valor);
+        });
     }
 
     // Agrupa várias chamadas seguidas numa só requisição.
@@ -118,16 +119,16 @@
     }, 300);
 
     function mostrarAviso(titulo, texto, url) {
-        var area = document.getElementById('toasts');
+        var area = document.getElementById('avisos');
         if (!area) return;
         var aviso = document.createElement('a');
         aviso.href = url;
-        aviso.className = 'block bg-white border border-slate-200 shadow-lg rounded-xl p-3 hover:bg-slate-50 transition';
-        var t = document.createElement('p');
-        t.className = 'text-sm font-semibold text-slate-800 truncate';
+        aviso.className = 'aviso';
+        var t = document.createElement('span');
+        t.className = 'aviso-titulo';
         t.textContent = titulo;
-        var c = document.createElement('p');
-        c.className = 'text-sm text-slate-600 line-clamp-2 break-words';
+        var c = document.createElement('span');
+        c.className = 'aviso-texto';
         c.textContent = texto.length > 140 ? texto.slice(0, 140) + '…' : texto;
         aviso.appendChild(t);
         aviso.appendChild(c);
@@ -135,28 +136,9 @@
         setTimeout(function () { aviso.remove(); }, 6000);
     }
 
-    // Painel "Online" do topo
-    var botaoOnline = document.getElementById('online-toggle');
-    var painelOnline = document.getElementById('online-painel');
-    function abrirPainel(abrir) {
-        if (!painelOnline) return;
-        painelOnline.classList.toggle('hidden', !abrir);
-        botaoOnline.setAttribute('aria-expanded', String(abrir));
-    }
-    if (botaoOnline && painelOnline) {
-        botaoOnline.addEventListener('click', function (e) {
-            e.stopPropagation();
-            var abrir = painelOnline.classList.contains('hidden');
-            abrirPainel(abrir);
-            if (abrir) atualizarUsuarios();
-        });
-        document.addEventListener('click', function (e) {
-            if (!painelOnline.contains(e.target)) abrirPainel(false);
-        });
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') abrirPainel(false);
-        });
-    }
+    // Lista "Online" da barra: atualiza ao abrir o menu suspenso.
+    var botaoOnline = document.getElementById('botao-online');
+    if (botaoOnline) botaoOnline.addEventListener('show.bs.dropdown', function () { atualizarUsuarios(); });
 
     // Quem fica offline sem avisar (rede caiu) expira no servidor; a lista é revista periodicamente.
     setInterval(atualizarUsuarios, INTERVALO_LISTA_USUARIOS);

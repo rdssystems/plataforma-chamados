@@ -1,135 +1,92 @@
 {% extends 'base.html' %}
 
-{% block title %}Plataformas — Gestão de Chamados{% endblock %}
-{% block header_title %}Controle de Plataformas{% endblock %}
+{% block title %}Plataformas{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h3 class="text-xl font-bold text-slate-800">Plataformas da Empresa</h3>
-            <p class="text-sm text-slate-500">Cadastre os sistemas, portais ou aplicativos que recebem chamados.</p>
-        </div>
-        <div>
-            <a href="{% url 'plataformas:plataforma_create' %}" class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Nova Plataforma
-            </a>
-        </div>
+<header class="cabecalho-pagina mb-4">
+    <div>
+        <h1 class="h4 mb-1">Plataformas</h1>
+        <p class="mb-0">Sistemas, portais e aplicativos que recebem chamados.</p>
     </div>
+    <a href="{% url 'plataformas:plataforma_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Cadastrar plataforma</a>
+</header>
 
-    <!-- Filters -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <form method="get" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div class="sm:col-span-2">
-                <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nome ou descrição..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            </div>
-            <div>
-                <select name="status" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                    <option value="">Todos os Status</option>
-                    <option value="ativa" {% if status == 'ativa' %}selected{% endif %}>Ativas</option>
-                    <option value="inativa" {% if status == 'inativa' %}selected{% endif %}>Inativas</option>
-                </select>
-            </div>
-            <div>
-                <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition">
-                    Filtrar
-                </button>
-            </div>
-        </form>
+<section class="filtros-pagina mb-3" aria-labelledby="titulo-filtros">
+    <h2 class="h6 mb-3" id="titulo-filtros">Filtros</h2>
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label for="filtro-q" class="form-label small mb-1">Buscar</label>
+            <input type="search" id="filtro-q" name="q" value="{{ q }}" class="form-control" placeholder="Nome ou descrição">
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <label for="filtro-status" class="form-label small mb-1">Situação</label>
+            <select id="filtro-status" name="status" class="form-select">
+                <option value="">Todas</option>
+                <option value="ativa"{% if status == 'ativa' %} selected{% endif %}>Ativas</option>
+                <option value="inativa"{% if status == 'inativa' %} selected{% endif %}>Inativas</option>
+            </select>
+        </div>
+        <div class="col-sm-6 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Aplicar</button>
+            {% if q or status %}<a href="{% url 'plataformas:plataforma_list' %}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
+        </div>
+    </form>
+</section>
+
+<section class="card shadow-sm" aria-labelledby="titulo-resultados">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h6 mb-0" id="titulo-resultados">Plataformas cadastradas</h2>
+        {% if page_obj %}{% with total=page_obj.paginator.count %}<span class="small text-muted">{{ total }} plataforma{{ total|pluralize }}</span>{% endwith %}
+        {% else %}{% with total=plataformas|length %}<span class="small text-muted">{{ total }} plataforma{{ total|pluralize }}</span>{% endwith %}{% endif %}
     </div>
-
-    <!-- Plataformas Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm text-left">
-                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase text-xs">
-                    <tr>
-                        <th class="px-6 py-3.5">Plataforma</th>
-                        <th class="px-6 py-3.5">Cor</th>
-                        <th class="px-6 py-3.5">Chamados Vinculados</th>
-                        <th class="px-6 py-3.5">Status</th>
-                        <th class="px-6 py-3.5 text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 text-slate-700">
-                    {% for p in plataformas %}
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center space-x-3">
-                                <span class="w-3.5 h-3.5 rounded-full flex-shrink-0" style="background-color: {{ p.cor }};"></span>
-                                <div>
-                                    <p class="font-semibold text-slate-900">{{ p.nome }}</p>
-                                    {% if p.url %}
-                                    <a href="{{ p.url }}" target="_blank" class="text-xs text-blue-600 hover:underline flex items-center mt-0.5">
-                                        {{ p.url }}
-                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                    </a>
-                                    {% endif %}
-                                    {% if p.descricao %}
-                                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ p.descricao }}</p>
-                                    {% endif %}
-                                </div>
+    {% if plataformas %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Plataforma</th>
+                    <th scope="col">Chamados</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col" class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in plataformas %}
+                <tr>
+                    <td style="min-width: 16rem;">
+                        <div class="d-flex align-items-start gap-2">
+                            <span class="marcador-cor mt-2" style="background-color: {{ p.cor }}" aria-hidden="true"></span>
+                            <div class="min-w-0">
+                                <div class="fw-semibold">{{ p.nome }}</div>
+                                {% if p.url %}<a href="{{ p.url }}" target="_blank" rel="noopener noreferrer" class="small text-break">{{ p.url }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span class="visually-hidden">(abre em nova aba)</span></a>{% endif %}
+                                {% if p.descricao %}<div class="small text-muted text-truncate" style="max-width: 28rem;">{{ p.descricao }}</div>{% endif %}
                             </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium border" style="border-color: {{ p.cor }}; color: {{ p.cor }};">
-                                {{ p.cor }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 font-medium text-slate-700">
-                            {{ p.total_chamados }} chamados
-                        </td>
-                        <td class="px-6 py-4">
-                            {% if p.ativa %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                Ativa
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                                Inativa
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 text-right space-x-3">
-                            <a href="{% url 'plataformas:plataforma_update' p.pk %}" class="text-xs font-medium text-blue-600 hover:text-blue-800">
-                                Editar
-                            </a>
-                            <form method="post" action="{% url 'plataformas:plataforma_toggle' p.pk %}" class="inline">
-                                {% csrf_token %}
-                                <button type="submit" class="text-xs font-medium {% if p.ativa %}text-rose-600 hover:text-rose-800{% else %}text-emerald-600 hover:text-emerald-800{% endif %}">
-                                    {% if p.ativa %}Desativar{% else %}Ativar{% endif %}
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-slate-500 text-sm">
-                            Nenhuma plataforma encontrada.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        {% if is_paginated %}
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-            <div class="space-x-1">
-                {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Anterior</a>
-                {% endif %}
-                {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if status %}&status={{ status }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Próxima</a>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
+                        </div>
+                    </td>
+                    <td class="text-nowrap">{{ p.total_chamados }} chamado{{ p.total_chamados|pluralize }}</td>
+                    <td>
+                        {% if p.ativa %}<span class="selo selo-sucesso"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Ativa</span>
+                        {% else %}<span class="selo selo-neutro"><i class="bi bi-pause-circle" aria-hidden="true"></i>Inativa</span>{% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <a href="{% url 'plataformas:plataforma_update' p.pk %}" class="btn btn-sm btn-outline-primary" aria-label="Editar {{ p.nome }}">Editar</a>
+                        <form method="post" action="{% url 'plataformas:plataforma_toggle' p.pk %}" class="d-inline"
+                              onsubmit="return confirm('{% if p.ativa %}Desativar{% else %}Ativar{% endif %} a plataforma {{ p.nome|escapejs }}?{% if p.ativa %} Ela deixa de aparecer para novos chamados.{% endif %}')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if p.ativa %}btn-outline-danger{% else %}btn-outline-success{% endif %}">{% if p.ativa %}Desativar{% else %}Ativar{% endif %}<span class="visually-hidden"> {{ p.nome }}</span></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-</div>
+    {% else %}
+    <div class="card-body text-center py-5">
+        <p class="fw-semibold mb-1">Nenhuma plataforma encontrada.</p>
+        <p class="small text-muted mb-0">{% if q or status %}Ajuste os filtros acima.{% else %}Use “Cadastrar plataforma” para começar.{% endif %}</p>
+    </div>
+    {% endif %}
+</section>
+{% include 'partials/paginacao.html' %}
 {% endblock %}

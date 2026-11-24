@@ -95,7 +95,19 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Ajustes do padrão de dashboards (`front-rules.md`): tooltip pelo teclado (Tab foca o gráfico, setas/Home/End percorrem, Esc fecha), recorte do filtro de dev nos subtítulos e botão "Tentar de novo" em caso de falha. A adoção completa do design system (paleta Naicas, Lexend, Bootstrap) fica para a próxima tarefa.
 - **Correção no chat:** a contagem de não lidas comparava horários, e no Windows o relógio do Python muda só a cada ~3 ms, então uma mensagem enviada logo após marcar como lida contava como lida (teste falhava em 5 de 8 rodadas). Agora a leitura é marcada pelo id da última mensagem lida (`Participante.ultima_lida_id`, migração `chat.0002` que converte o histórico). Aplicada no banco local (cópia em `db-antes-chat0002-*.sqlite3`).
 
+- **Segurança — XSS armazenado corrigido** (commit `93462a4`): a linha do tempo do chamado usava `|safe` em títulos com nome de arquivo anexado e nomes de usuários. Um anexo chamado `<img src=x onerror=...>.png` executava JavaScript para quem abrisse o chamado. **Em produção até o próximo deploy.**
+- **Design system da Secretaria aplicado** (padrão do `front-rules.md`, referência visual do Naicas):
+  - Tailwind trocado por Bootstrap 5.3.3 + Bootstrap Icons 1.11.3 + Lexend, todos com versão fixa e SRI. Tokens do padrão (`--cor-primaria`, `--cor-critica`, ...) em `static/css/secretaria.css`.
+  - Barra superior anil com módulos e contexto do perfil; abaixo de 992px, menu lateral (offcanvas) com fundo `inert` e foco gerenciado (`static/js/navegacao.js`, igual ao Naicas).
+  - Todas as telas reescritas: `cabecalho-pagina`, `filtros-pagina`, cards de indicador, selos de status/prioridade com cor + ícone + texto, linha do tempo, kanban com modal de motivo (substitui `prompt()`), chat.
+  - Dashboard na anatomia do padrão: cabeçalho com até 3 ações, índice lateral (≥1200px), indicadores com unidade/recorte/link, recorte, fila de trabalho, análise (ECharts em anil/folha, validado) e atividades.
+  - Indicadores e listagem usam as mesmas regras (`chamados/consultas.py`); novo filtro `situacao` na listagem. Filtros validados em dashboard, listagem, kanban e relatório (`config/filtros.py`): entrada inválida mostra erro no campo, preserva o valor e suspende resultados (antes: erro 500). Paginação preserva os filtros (`{% querystring %}`).
+  - Formulários com `config/formularios.py` (classes Bootstrap, `is-invalid`, `aria-describedby`) e `templates/partials/campo.html`.
+  - Relatório: "No prazo" mostra numerador/denominador e "—" sem base; durações em português (`|duracao`); PDF com as cores do padrão.
+  - Ficha de adoção (seção 8) e situação dos critérios de aceite (seção 9) em `docs/ficha-adocao-dashboard.md`.
+  - Validação: 91 testes (15 novos de critérios de aceite em `config/test_padrao_secretaria.py`); telas conferidas em 375/768/1440 px no Edge headless; contraste WCAG ≥ 4,5:1 em todas as combinações de texto usadas.
 ## Pendências / próximos passos
-- [ ] Testar o chat no navegador com dois usuários reais (interface não foi vista em navegador, só validada via HTTP/WebSocket).
+- [ ] Testar o chat e o novo visual no navegador e em aparelho físico (percurso completo por teclado incluído).
+- [ ] Decidir se o `front-rules.md` (padrão da Secretaria) entra no repositório.
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).
 - [ ] Rotina de backup do Postgres e dos anexos (volumes `postgres_data` e `media_data`).

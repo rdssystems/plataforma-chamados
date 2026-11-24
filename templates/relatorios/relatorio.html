@@ -1,252 +1,181 @@
 {% extends 'base.html' %}
+{% load consulta %}
 
-{% block title %}Relatórios de Produtividade — Gestão de Chamados{% endblock %}
-{% block header_title %}Relatórios Gerenciais{% endblock %}
+{% block title %}Relatórios{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Top Action Bar & Filters -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
-            <div>
-                <h3 class="text-xl font-bold text-slate-800">Relatório de Entregas e Desempenho</h3>
-                <p class="text-xs text-slate-500 mt-0.5">
-                    Período selecionado: <strong>{{ dados.data_inicio|date:"d/m/Y" }}</strong> a <strong>{{ dados.data_fim|date:"d/m/Y" }}</strong>
-                </p>
-            </div>
+<header class="cabecalho-pagina mb-4">
+    <div>
+        <p class="cabecalho-sobretitulo mb-2">Relatório de entregas e desempenho</p>
+        <h1 class="h4 mb-1">Relatórios</h1>
+        {% if filtros_validos %}
+        <p class="mb-0">Período: <strong>{{ data_inicio|date:"d/m/Y" }}</strong> a <strong>{{ data_fim|date:"d/m/Y" }}</strong>
+            · {% if recorte %}{{ recorte|join:" · " }}{% else %}equipe inteira, todas as plataformas{% endif %}</p>
+        {% else %}
+        <p class="mb-0">Corrija os filtros para gerar o relatório.</p>
+        {% endif %}
+    </div>
+    {% if filtros_validos %}
+    <div class="d-flex flex-wrap gap-2" aria-label="Exportar com o mesmo recorte">
+        <a href="{% querystring exportar='excel' %}" class="btn btn-light"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> Exportar Excel</a>
+        <a href="{% querystring exportar='pdf' %}" class="btn btn-outline-light"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Exportar PDF</a>
+    </div>
+    {% endif %}
+</header>
 
-            <!-- Botões de Exportação -->
-            <div class="flex items-center space-x-2">
-                <a href="?{% for key, val in request.GET.items %}{% if key != 'exportar' %}{{ key }}={{ val }}&{% endif %}{% endfor %}exportar=excel"
-                   class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Exportar Excel (.xlsx)
-                </a>
-
-                <a href="?{% for key, val in request.GET.items %}{% if key != 'exportar' %}{{ key }}={{ val }}&{% endif %}{% endfor %}exportar=pdf"
-                   class="inline-flex items-center px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                    Exportar PDF (.pdf)
-                </a>
-            </div>
+<section class="filtros-pagina mb-4" aria-labelledby="titulo-filtros">
+    <h2 class="h6 mb-2" id="titulo-filtros">Período e filtros</h2>
+    <nav class="mb-3" aria-label="Atalhos de período">
+        <ul class="nav nav-pills gap-1">
+            {% for valor, rotulo in periodos %}
+            <li class="nav-item"><a class="nav-link py-1{% if periodo_atalho == valor and not filtros.data_inicio and not filtros.data_fim %} active{% endif %}"
+                href="{% querystring periodo=valor data_inicio=None data_fim=None exportar=None %}"
+                {% if periodo_atalho == valor and not filtros.data_inicio and not filtros.data_fim %}aria-current="true"{% endif %}>{{ rotulo }}</a></li>
+            {% endfor %}
+        </ul>
+    </nav>
+    <form method="get" class="row g-2 align-items-end" novalidate>
+        {% include 'chamados/partials/filtro_campo.html' with nome='data_inicio' rotulo='De' tipo='date' classes='col-6 col-md-4 col-xl-2' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='data_fim' rotulo='Até' tipo='date' classes='col-6 col-md-4 col-xl-2' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='dev' rotulo='Desenvolvedor' registros=devs pessoas=True vazio='Todos' classes='col-sm-6 col-md-4 col-xl-2' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='plataforma' rotulo='Plataforma' registros=plataformas vazio='Todas' classes='col-sm-6 col-md-4 col-xl-2' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='tipo' rotulo='Tipo' opcoes=tipos vazio='Todos' classes='col-sm-6 col-md-4 col-xl-2' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='prioridade' rotulo='Prioridade' opcoes=prioridades vazio='Todas' classes='col-sm-6 col-md-4 col-xl-2' %}
+        <div class="col-12 d-flex flex-wrap justify-content-end gap-2">
+            <p class="small text-muted me-auto mb-0 align-self-center">Com as duas datas preenchidas, elas substituem o atalho de período.</p>
+            <a href="{% url 'relatorios:relatorio' %}" class="btn btn-outline-secondary">Limpar</a>
+            <button type="submit" class="btn btn-primary">Atualizar relatório</button>
         </div>
+    </form>
+</section>
 
-        <!-- Formulário de Filtros -->
-        <form method="get" class="space-y-3">
-            <!-- Atalhos de Período -->
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs font-bold text-slate-500 mr-1 uppercase">Período:</span>
-                <a href="?periodo=esta_semana" class="px-2.5 py-1 text-xs rounded-lg font-medium border {% if periodo_atalho == 'esta_semana' %}bg-slate-800 text-white border-slate-800{% else %}bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100{% endif %}">Esta semana</a>
-                <a href="?periodo=semana_passada" class="px-2.5 py-1 text-xs rounded-lg font-medium border {% if periodo_atalho == 'semana_passada' %}bg-slate-800 text-white border-slate-800{% else %}bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100{% endif %}">Semana passada</a>
-                <a href="?periodo=este_mes" class="px-2.5 py-1 text-xs rounded-lg font-medium border {% if periodo_atalho == 'este_mes' %}bg-slate-800 text-white border-slate-800{% else %}bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100{% endif %}">Este mês</a>
-                <a href="?periodo=mes_passado" class="px-2.5 py-1 text-xs rounded-lg font-medium border {% if periodo_atalho == 'mes_passado' %}bg-slate-800 text-white border-slate-800{% else %}bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100{% endif %}">Mês passado</a>
-            </div>
+{% if not filtros_validos %}
+<div class="alert alert-warning" role="status"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Corrija os filtros destacados acima para ver as métricas e exportar.</div>
+{% else %}
+<section class="row g-3 mb-4" aria-label="Indicadores do período">
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador h-100">
+            <span class="indicador-rotulo">Abertos</span>
+            <span class="indicador-valor">{{ dados.total_abertos }}</span>
+            <span class="indicador-detalhe">Criados no período</span>
+        </div>
+    </div>
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador painel-indicador-sucesso h-100">
+            <span class="indicador-rotulo">Concluídos</span>
+            <span class="indicador-valor">{{ dados.total_concluidos }}</span>
+            <span class="indicador-detalhe">Entregues no período</span>
+        </div>
+    </div>
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador h-100">
+            <span class="indicador-rotulo">Tempo médio</span>
+            <span class="indicador-valor fs-5">{{ dados.tempo_medio|duracao|default:"—" }}</span>
+            <span class="indicador-detalhe">{% if dados.tempo_medio %}Da abertura à conclusão{% else %}Nenhum concluído no período{% endif %}</span>
+        </div>
+    </div>
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador h-100">
+            <span class="indicador-rotulo">No prazo</span>
+            {% if dados.prazo_denominador %}
+            <span class="indicador-valor">{{ dados.taxa_no_prazo }}%</span>
+            <span class="indicador-detalhe">{{ dados.prazo_numerador }} de {{ dados.prazo_denominador }} concluídos com prazo</span>
+            {% else %}
+            <span class="indicador-valor">—</span>
+            <span class="indicador-detalhe">Nenhum concluído com prazo no período</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador painel-indicador-critico h-100">
+            <span class="indicador-rotulo">Atrasados no fim</span>
+            <span class="indicador-valor">{{ dados.atrasados_fim_periodo }}</span>
+            <span class="indicador-detalhe">Prazo vencido em {{ dados.data_fim|date:"d/m" }} sem entrega</span>
+        </div>
+    </div>
+    <div class="col-6 col-lg-4 col-xl-2">
+        <div class="indicador card shadow-sm painel-indicador painel-indicador-atencao h-100">
+            <span class="indicador-rotulo">Backlog</span>
+            <span class="indicador-valor">{{ dados.backlog }}</span>
+            <span class="indicador-detalhe">Pendentes no fim do período</span>
+        </div>
+    </div>
+</section>
 
-            <!-- Filtros Específicos -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 pt-2">
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">De:</label>
-                    <input type="date" name="data_inicio" value="{{ dados.data_inicio|date:'Y-m-d' }}" class="w-full text-xs p-2 border rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Até:</label>
-                    <input type="date" name="data_fim" value="{{ dados.data_fim|date:'Y-m-d' }}" class="w-full text-xs p-2 border rounded-lg">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Desenvolvedor:</label>
-                    <select name="dev" class="w-full text-xs p-2 border rounded-lg">
-                        <option value="">Todos os Devs</option>
-                        {% for d in devs %}
-                        <option value="{{ d.id }}" {% if dev_id == d.id|stringformat:'s' %}selected{% endif %}>{{ d.get_full_name|default:d.username }}</option>
+<div class="row g-3 mb-4">
+    <section class="col-lg-6" aria-labelledby="titulo-devs">
+        <div class="card shadow-sm h-100">
+            <div class="card-header"><h2 class="h6 mb-0" id="titulo-devs">Desempenho por desenvolvedor</h2></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light"><tr><th scope="col">Desenvolvedor</th><th scope="col" class="text-end">Concluídos</th><th scope="col">Tempo médio</th><th scope="col" class="text-end">No prazo</th></tr></thead>
+                    <tbody>
+                        {% for d in dados.quebra_devs %}
+                        <tr>
+                            <td class="fw-semibold">{{ d.dev.get_full_name|default:d.dev.username }}</td>
+                            <td class="text-end">{{ d.concluidos }}</td>
+                            <td>{{ d.tempo_medio|duracao|default:"—" }}</td>
+                            <td class="text-end">{% if d.concluidos %}{{ d.taxa_no_prazo }}%{% else %}—{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">Nenhum desenvolvedor com entregas no período.</td></tr>
                         {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Plataforma:</label>
-                    <select name="plataforma" class="w-full text-xs p-2 border rounded-lg">
-                        <option value="">Todas</option>
-                        {% for p in plataformas %}
-                        <option value="{{ p.id }}" {% if plataforma_id == p.id|stringformat:'s' %}selected{% endif %}>{{ p.nome }}</option>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <section class="col-lg-6" aria-labelledby="titulo-plataformas">
+        <div class="card shadow-sm h-100">
+            <div class="card-header"><h2 class="h6 mb-0" id="titulo-plataformas">Desempenho por plataforma</h2></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light"><tr><th scope="col">Plataforma</th><th scope="col" class="text-end">Abertos</th><th scope="col" class="text-end">Concluídos</th><th scope="col" class="text-end">Ativos agora</th></tr></thead>
+                    <tbody>
+                        {% for p in dados.quebra_plataformas %}
+                        <tr>
+                            <td>{% include 'chamados/partials/selo_plataforma.html' with plataforma=p.plataforma %}</td>
+                            <td class="text-end">{{ p.abertos }}</td>
+                            <td class="text-end">{{ p.concluidos }}</td>
+                            <td class="text-end">{{ p.ativos }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">Nenhuma plataforma com movimento no período.</td></tr>
                         {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tipo:</label>
-                    <select name="tipo" class="w-full text-xs p-2 border rounded-lg">
-                        <option value="">Todos os Tipos</option>
-                        {% for val, label in tipos %}
-                        <option value="{{ val }}" {% if tipo == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition">
-                        Atualizar Relatório
-                    </button>
-                </div>
+                    </tbody>
+                </table>
             </div>
-        </form>
-    </div>
-
-    <!-- Cards de Indicadores do Período -->
-    <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        <!-- Abertos -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-bold text-slate-500 uppercase">Abertos</p>
-            <p class="text-2xl font-black text-slate-800 mt-1">{{ dados.total_abertos }}</p>
-            <span class="text-[10px] text-slate-400">Criados no período</span>
         </div>
-
-        <!-- Concluídos -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-bold text-slate-500 uppercase">Concluídos</p>
-            <p class="text-2xl font-black text-emerald-600 mt-1">{{ dados.total_concluidos }}</p>
-            <span class="text-[10px] text-slate-400">Entregues no período</span>
-        </div>
-
-        <!-- Tempo Médio -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-bold text-slate-500 uppercase">Tempo Médio</p>
-            <p class="text-lg font-black text-blue-600 mt-1 truncate" title="{{ dados.tempo_medio|default:'—' }}">
-                {{ dados.tempo_medio|default:"—" }}
-            </p>
-            <span class="text-[10px] text-slate-400">Resolução dos concluídos</span>
-        </div>
-
-        <!-- No Prazo -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-bold text-slate-500 uppercase">No Prazo</p>
-            <p class="text-2xl font-black text-purple-600 mt-1">{{ dados.taxa_no_prazo }}%</p>
-            <span class="text-[10px] text-slate-400">% com prazo cumprido</span>
-        </div>
-
-        <!-- Atrasados no Fim -->
-        <div class="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm">
-            <p class="text-xs font-bold text-red-700 uppercase">Atrasados no Fim</p>
-            <p class="text-2xl font-black text-red-800 mt-1">{{ dados.atrasados_fim_periodo }}</p>
-            <span class="text-[10px] text-red-600">Não entregues na data final</span>
-        </div>
-
-        <!-- Backlog -->
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-bold text-slate-500 uppercase">Backlog</p>
-            <p class="text-2xl font-black text-slate-700 mt-1">{{ dados.backlog }}</p>
-            <span class="text-[10px] text-slate-400">Pendentes ao fim do período</span>
-        </div>
-    </div>
-
-    <!-- Quebras em Tabelas -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Tabela por Dev -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 bg-slate-50 border-b border-slate-200">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Desempenho por Desenvolvedor</h4>
-            </div>
-            <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
-                <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
-                    <tr>
-                        <th class="px-4 py-3">Dev</th>
-                        <th class="px-4 py-3">Concluídos</th>
-                        <th class="px-4 py-3">Tempo Médio</th>
-                        <th class="px-4 py-3">% no Prazo</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-slate-700">
-                    {% for d in dados.quebra_devs %}
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3 font-semibold">{{ d.dev.get_full_name|default:d.dev.username }}</td>
-                        <td class="px-4 py-3 font-bold text-emerald-600">{{ d.concluidos }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ d.tempo_medio|default:"—" }}</td>
-                        <td class="px-4 py-3 font-semibold {% if d.taxa_no_prazo >= 80 %}text-emerald-600{% else %}text-amber-600{% endif %}">{{ d.taxa_no_prazo }}%</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum dev com dados.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Tabela por Plataforma -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 bg-slate-50 border-b border-slate-200">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Desempenho por Plataforma</h4>
-            </div>
-            <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
-                <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
-                    <tr>
-                        <th class="px-4 py-3">Plataforma</th>
-                        <th class="px-4 py-3">Abertos</th>
-                        <th class="px-4 py-3">Concluídos</th>
-                        <th class="px-4 py-3">Ativos Atuais</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-slate-700">
-                    {% for p in dados.quebra_plataformas %}
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3 font-semibold flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ p.plataforma.cor }};"></span>
-                            <span>{{ p.plataforma.nome }}</span>
-                        </td>
-                        <td class="px-4 py-3">{{ p.abertos }}</td>
-                        <td class="px-4 py-3 font-bold text-emerald-600">{{ p.concluidos }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ p.ativos }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma plataforma com dados.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Lista Detalhada de Chamados Concluídos -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Lista Detalhada de Chamados Concluídos no Período</h4>
-            <span class="text-xs font-bold text-slate-600">{{ dados.lista_detalhada|length }} chamados</span>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
-                <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
-                    <tr>
-                        <th class="px-4 py-3">Código</th>
-                        <th class="px-4 py-3">Título</th>
-                        <th class="px-4 py-3">Plataforma</th>
-                        <th class="px-4 py-3">Responsável</th>
-                        <th class="px-4 py-3">Criado em</th>
-                        <th class="px-4 py-3">Concluído em</th>
-                        <th class="px-4 py-3">Prazo</th>
-                        <th class="px-4 py-3">Tempo Resolução</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-slate-700">
-                    {% for c in dados.lista_detalhada %}
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3 font-bold text-blue-600">
-                            <a href="{% url 'chamados:chamado_detail' c.pk %}" class="hover:underline">{{ c.codigo }}</a>
-                        </td>
-                        <td class="px-4 py-3 font-medium text-slate-900 max-w-xs truncate">{{ c.titulo }}</td>
-                        <td class="px-4 py-3">
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold" style="color: {{ c.plataforma.cor }}; background-color: {{ c.plataforma.cor }}15;">
-                                {{ c.plataforma.nome }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">{{ c.responsavel.username|default:"Sem dev" }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td class="px-4 py-3 font-semibold text-emerald-600">{{ c.concluido_em|date:"d/m/Y H:i" }}</td>
-                        <td class="px-4 py-3">{{ c.prazo|date:"d/m/Y"|default:"—" }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ c.tempo_resolucao|default:"—" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="p-6 text-center text-slate-400 italic">
-                            Nenhum chamado concluído encontrado neste período com os filtros aplicados.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+    </section>
 </div>
+
+<section class="card shadow-sm mb-4" aria-labelledby="titulo-lista">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h2 class="h6 mb-0" id="titulo-lista">Chamados concluídos no período</h2>
+        {% with total=dados.lista_detalhada|length %}<span class="small text-muted">{{ total }} chamado{{ total|pluralize }}</span>{% endwith %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th scope="col">Chamado</th><th scope="col">Plataforma</th><th scope="col">Responsável</th><th scope="col">Criado em</th><th scope="col">Concluído em</th><th scope="col">Prazo</th><th scope="col">Resolução</th></tr>
+            </thead>
+            <tbody>
+                {% for c in dados.lista_detalhada %}
+                <tr>
+                    <td style="min-width: 14rem;"><a href="{% url 'chamados:chamado_detail' c.pk %}" class="fw-semibold text-decoration-none">{{ c.codigo }}</a><div class="small text-truncate" style="max-width: 22rem;">{{ c.titulo }}</div></td>
+                    <td>{% include 'chamados/partials/selo_plataforma.html' with plataforma=c.plataforma %}</td>
+                    <td class="small text-nowrap">{% if c.responsavel %}{{ c.responsavel.get_full_name|default:c.responsavel.username }}{% else %}<span class="text-muted">Sem responsável</span>{% endif %}</td>
+                    <td class="small text-nowrap">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td class="small text-nowrap">{{ c.concluido_em|date:"d/m/Y H:i" }}</td>
+                    <td class="small text-nowrap">{{ c.prazo|date:"d/m/Y"|default:"—" }}</td>
+                    <td class="small text-nowrap">{{ c.tempo_resolucao|duracao|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum chamado concluído no período com os filtros aplicados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
 {% endblock %}

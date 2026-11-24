@@ -1,19 +1,19 @@
 {% comment %}
 Card de gráfico do dashboard (desenhado por static/js/dashboard_graficos.js).
-Parâmetros: tipo (linha | plataformas | devs | prioridades), titulo, subtitulo, recorte, classes.
+Parâmetros: tipo (linha | plataformas | devs | prioridades), titulo, subtitulo, recorte.
+O mesmo dado vira tabela no botão "Ver tabela" (padrão: gráfico com tabela equivalente).
 {% endcomment %}
-<figure data-grafico="{{ tipo }}" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm min-w-0 {{ classes }}">
-    <div class="flex items-start justify-between gap-3 mb-3">
-        <figcaption class="min-w-0">
-            <h4 class="text-sm font-bold text-slate-800">{{ titulo }}</h4>
-            <p class="text-xs text-slate-500 mt-0.5"><span data-subtitulo>{{ subtitulo }}</span>{% if recorte %}<span class="font-medium text-slate-600">{% if subtitulo %} · {% endif %}{{ recorte }}</span>{% endif %}</p>
-        </figcaption>
-        <button type="button" data-alternar-tabela aria-pressed="false"
-                class="flex-shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 transition">
-            Ver tabela
-        </button>
+<figure data-grafico="{{ tipo }}" class="card shadow-sm h-100 mb-0">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+            <figcaption class="min-w-0">
+                <h3 class="h6 mb-1">{{ titulo }}</h3>
+                <p class="small text-muted mb-0"><span data-subtitulo>{{ subtitulo }}</span>{% if recorte %}<span class="fw-medium">{% if subtitulo %} · {% endif %}{{ recorte }}</span>{% endif %}</p>
+            </figcaption>
+            <button type="button" data-alternar-tabela aria-pressed="false" class="btn btn-sm btn-outline-primary flex-shrink-0">Ver tabela</button>
+        </div>
+        <div data-area-grafico class="grafico-area" style="height: 256px"></div>
+        <div data-area-tabela class="d-none table-responsive"></div>
+        <p data-estado class="d-none text-center text-muted small py-5 mb-0"></p>
     </div>
-    <div data-area-grafico class="w-full" style="height: 256px"></div>
-    <div data-area-tabela class="hidden overflow-x-auto"></div>
-    <p data-estado class="hidden py-10 text-center text-xs text-slate-400 italic"></p>
 </figure>

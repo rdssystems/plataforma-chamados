@@ -10,36 +10,36 @@
             @bottom-right {
                 content: "Página " counter(page) " de " counter(pages);
                 font-size: 9pt;
-                color: #64748b;
+                color: #5a5e6b;
             }
         }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            color: #1e293b;
+            color: #1e2230;
             font-size: 10pt;
             line-height: 1.4;
         }
         .header {
-            border-bottom: 2px solid #2563eb;
+            border-bottom: 2px solid #2b3a8c;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
         .title {
             font-size: 18pt;
             font-weight: bold;
-            color: #0f172a;
+            color: #1e2230;
             margin: 0;
         }
         .subtitle {
             font-size: 10pt;
-            color: #64748b;
+            color: #5a5e6b;
             margin-top: 4px;
         }
         .section-title {
             font-size: 12pt;
             font-weight: bold;
-            color: #1e293b;
-            border-bottom: 1px solid #cbd5e1;
+            color: #1e2230;
+            border-bottom: 1px solid #c8cbd6;
             padding-bottom: 4px;
             margin-top: 20px;
             margin-bottom: 10px;
@@ -49,20 +49,20 @@
             margin-bottom: 15px;
         }
         .card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background-color: #f7f8fb;
+            border: 1px solid #dfe2ec;
             padding: 8px 12px;
             text-align: center;
         }
         .card-val {
             font-size: 16pt;
             font-weight: bold;
-            color: #2563eb;
+            color: #2b3a8c;
         }
         .card-lbl {
             font-size: 8pt;
             text-transform: uppercase;
-            color: #64748b;
+            color: #5a5e6b;
             font-weight: bold;
         }
         table {
@@ -72,7 +72,7 @@
             font-size: 9pt;
         }
         th {
-            background-color: #1e293b;
+            background-color: #1e2230;
             color: #ffffff;
             font-weight: bold;
             text-align: left;
@@ -80,17 +80,17 @@
         }
         td {
             padding: 6px 8px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #dfe2ec;
         }
         tr:nth-child(even) td {
-            background-color: #f8fafc;
+            background-color: #f7f8fb;
         }
         .footer {
             margin-top: 30px;
             font-size: 8pt;
-            color: #94a3b8;
+            color: #7a7f8c;
             text-align: center;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #dfe2ec;
             padding-top: 10px;
         }
     </style>
@@ -112,19 +112,19 @@
                 <div class="card-lbl">Abertos</div>
             </td>
             <td class="card">
-                <div class="card-val" style="color: #059669;">{{ dados.total_concluidos }}</div>
+                <div class="card-val" style="color: #2e7a4c;">{{ dados.total_concluidos }}</div>
                 <div class="card-lbl">Concluídos</div>
             </td>
             <td class="card">
-                <div class="card-val" style="color: #7c3aed;">{{ dados.taxa_no_prazo }}%</div>
+                <div class="card-val" style="color: #2b3a8c;">{{ dados.taxa_no_prazo }}%</div>
                 <div class="card-lbl">No Prazo</div>
             </td>
             <td class="card">
-                <div class="card-val" style="color: #dc2626;">{{ dados.atrasados_fim_periodo }}</div>
+                <div class="card-val" style="color: #c8471f;">{{ dados.atrasados_fim_periodo }}</div>
                 <div class="card-lbl">Atrasados no Fim</div>
             </td>
             <td class="card">
-                <div class="card-val" style="color: #475569;">{{ dados.backlog }}</div>
+                <div class="card-val" style="color: #565a67;">{{ dados.backlog }}</div>
                 <div class="card-lbl">Backlog</div>
             </td>
         </tr>

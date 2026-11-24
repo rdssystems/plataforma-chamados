@@ -1,0 +1,6 @@
+{% comment %}Selo de status. Uso: include com chamado=c{% endcomment %}
+{% if chamado.status == 'concluido' %}<span class="selo selo-sucesso"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Concluído</span>
+{% elif chamado.status == 'cancelado' %}<span class="selo selo-neutro"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancelado</span>
+{% elif chamado.status == 'em_revisao' %}<span class="selo selo-atencao"><i class="bi bi-eye" aria-hidden="true"></i>Em revisão</span>
+{% elif chamado.status == 'em_andamento' %}<span class="selo selo-primario"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Em andamento</span>
+{% else %}<span class="selo selo-info"><i class="bi bi-inbox" aria-hidden="true"></i>Aberto</span>{% endif %}

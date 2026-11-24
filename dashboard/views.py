@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.contrib.auth import get_user_model
 
 from chamados.models import Chamado, MudancaStatus
+from chamados.consultas import q_situacao
+from config.filtros import Filtros
 from plataformas.models import Plataforma
 
 Usuario = get_user_model()
@@ -28,62 +30,65 @@ def _totais_por_semana(qs_semanal):
     return totais
 
 
+MENSAGEM_DEV_INVALIDO = 'Selecione um desenvolvedor da lista.'
+
+
+def _escopo(request, filtros):
+    """Chamados que o usuário pode ver, já com o filtro de dev validado (admin)."""
+    user = request.user
+    if getattr(user, 'is_admin', False):
+        devs = list(Usuario.objects.filter(is_active=True).order_by('first_name', 'username'))
+        dev_id = filtros.id_entre('dev', [d.pk for d in devs], MENSAGEM_DEV_INVALIDO)
+        qs = Chamado.objects.all()
+        if dev_id:
+            qs = qs.filter(responsavel_id=dev_id)
+        dev = next((d for d in devs if d.pk == dev_id), None)
+        return qs, devs, dev
+    return Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user)), [], None
+
+
 class DashboardIndexView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
         hoje = timezone.localdate()
-        inicio_mes = hoje.replace(day=1)
+        filtros = Filtros(self.request.GET)
+        qs, devs, dev = _escopo(self.request, filtros)
 
-        # Base do queryset
-        if getattr(user, 'is_admin', False):
-            qs = Chamado.objects.all()
-            dev_id = self.request.GET.get('dev', '').strip()
-            if dev_id:
-                qs = qs.filter(responsavel_id=dev_id)
-            context['dev_selecionado'] = dev_id
-            devs = list(Usuario.objects.filter(is_active=True).order_by('first_name', 'username'))
-            context['devs'] = devs
-            # Recorte exibido junto aos gráficos (padrão da Secretaria: "mostre o recorte perto dos números").
-            nome_dev = next((d.get_full_name() or d.username for d in devs if str(d.pk) == dev_id), '')
-            context['recorte_dev'] = f'somente {nome_dev}' if nome_dev else ''
-        else:
-            qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
+        context.update({
+            'hoje': hoje,
+            'devs': devs,
+            'dev_selecionado': filtros.brutos.get('dev', ''),
+            'dev_filtrado': dev,
+            'recorte_dev': f'somente {dev.get_full_name() or dev.username}' if dev else '',
+            'filtros_erros': filtros.erros,
+            'filtros_validos': filtros.validos,
+        })
+        # Filtro inválido: mantém a entrada e suspende os resultados até a correção.
+        if not filtros.validos:
+            return context
 
-        # 1. Agregação dos Cards (tudo em 1 query rápida no banco)
-        cards_data = qs.aggregate(
-            total_abertos=Count('id', filter=Q(status=Chamado.STATUS_ABERTO)),
-            total_em_andamento=Count('id', filter=Q(status__in=[Chamado.STATUS_EM_ANDAMENTO, Chamado.STATUS_EM_REVISAO])),
-            total_atrasados=Count('id', filter=Q(prazo__lt=hoje) & ~Q(status__in=Chamado.STATUS_FINAIS)),
-            total_concluidos_mes=Count('id', filter=Q(status=Chamado.STATUS_CONCLUIDO, concluido_em__date__gte=inicio_mes, concluido_em__date__lte=hoje)),
-            total_sem_responsavel=Count('id', filter=Q(responsavel__isnull=True) & ~Q(status__in=Chamado.STATUS_FINAIS)),
+        # 1. Indicadores (1 consulta), com as mesmas regras da listagem de chamados.
+        context['cards'] = qs.aggregate(
+            total_abertos=Count('id', filter=q_situacao('abertos', hoje)),
+            total_em_andamento=Count('id', filter=q_situacao('em_andamento', hoje)),
+            total_atrasados=Count('id', filter=q_situacao('atrasados', hoje)),
+            total_concluidos_mes=Count('id', filter=q_situacao('concluidos_mes', hoje)),
+            total_sem_responsavel=Count('id', filter=q_situacao('sem_responsavel', hoje)),
         )
 
-        context['cards'] = cards_data
-
-        # 2. Listas
-        # Atrasados, ordenados pelo prazo mais antigo
-        context['chamados_atrasados'] = qs.filter(
-            prazo__lt=hoje
-        ).exclude(
-            status__in=Chamado.STATUS_FINAIS
-        ).select_related('plataforma', 'responsavel').order_by('prazo')[:5]
-
-        # Vencendo nos próximos 3 dias
+        # 2. Fila de trabalho
+        context['chamados_atrasados'] = qs.filter(q_situacao('atrasados', hoje)).select_related(
+            'plataforma', 'responsavel').order_by('prazo')[:5]
         context['chamados_vencendo'] = qs.filter(
-            prazo__gte=hoje,
-            prazo__lte=hoje + timedelta(days=3)
-        ).exclude(
-            status__in=Chamado.STATUS_FINAIS
-        ).select_related('plataforma', 'responsavel').order_by('prazo')[:5]
+            prazo__gte=hoje, prazo__lte=hoje + timedelta(days=3)
+        ).exclude(status__in=Chamado.STATUS_FINAIS).select_related('plataforma', 'responsavel').order_by('prazo')[:5]
 
-        # Últimas 10 atividades
+        # 3. Últimas 10 atividades
         context['ultimas_atividades'] = MudancaStatus.objects.filter(
             chamado__in=qs
         ).select_related('chamado', 'alterado_por').order_by('-alterado_em')[:10]
-
         return context
 
 
@@ -95,14 +100,10 @@ class DashboardGraficosJsonView(LoginRequiredMixin, View):
         # 12 semanas completas (segunda a domingo), incluindo a atual.
         semanas = [hoje - timedelta(days=hoje.weekday(), weeks=n) for n in range(SEMANAS_NO_GRAFICO - 1, -1, -1)]
 
-        # Base do queryset
-        if getattr(user, 'is_admin', False):
-            qs = Chamado.objects.all()
-            dev_id = request.GET.get('dev', '').strip()
-            if dev_id:
-                qs = qs.filter(responsavel_id=dev_id)
-        else:
-            qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
+        filtros = Filtros(request.GET)
+        qs, _, _ = _escopo(request, filtros)
+        if not filtros.validos:
+            return JsonResponse({'erros': filtros.erros}, status=400)
 
         # 1. Gráfico Linha: abertos vs concluídos por semana (últimas 12 semanas) com TruncWeek
         abertos_semana = qs.filter(

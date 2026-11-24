@@ -8,8 +8,9 @@
  *   [data-estado]         mensagem de vazio/erro
  *   [data-subtitulo]      (opcional) texto preenchido a partir dos dados
  *
- * Cores: paleta de referência validada (CVD, contraste e faixa de luminosidade)
- * contra a superfície branca dos cards. Não trocar sem revalidar.
+ * Cores: identidade da Secretaria (anil, folha), validadas com o validador de
+ * dataviz (separação para daltonismo, contraste e luminosidade) contra a superfície
+ * branca dos cards. Não trocar sem revalidar.
  */
 (function () {
     'use strict';
@@ -19,18 +20,19 @@
 
     var COR = {
         superficie: '#ffffff',
-        tinta: '#0b0b0b',
-        tintaSecundaria: '#52514e',
-        tintaFraca: '#898781',
-        grade: '#e1e0d9',
-        eixo: '#c3c2b7',
-        borda: 'rgba(11,11,11,0.10)',
-        serie1: '#2a78d6',   // categórica 1 (azul)
-        serie2: '#eb6834',   // categórica 2 (laranja)
+        tinta: '#1e2230',            // grafite (--cor-texto)
+        tintaSecundaria: '#565a67',
+        tintaFraca: '#6b6f7b',
+        grade: '#e6e8ef',
+        eixo: '#c8cbd6',
+        borda: 'rgba(30,34,48,0.12)',
+        barra: '#2b3a8c',            // anil (--cor-primaria): gráficos de uma série
+        serie1: '#4a64c8',           // anil médio: Abertos
+        serie2: '#2e7a4c',           // folha (--cor-sucesso): Concluídos
         // Rampa ordinal de um só tom: mais escuro = mais urgente (Urgente → Baixa).
-        prioridade: ['#184f95', '#256abf', '#3987e5', '#6da7ec'],
+        prioridade: ['#1f2a6b', '#2b3a8c', '#4a64c8', '#8d98d4'],
     };
-    var FONTE = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+    var FONTE = "'Lexend', system-ui, -apple-system, 'Segoe UI', sans-serif";
     var ALTURA_BARRA = 40;   // altura reservada por categoria nos gráficos de barras
 
     if (!window.echarts) {
@@ -255,7 +257,7 @@
             pontos: o.nomes.length,
             opcao: barrasHorizontais({
                 nomes: o.nomes, valores: o.valores, marcadores: o.extra,
-                cores: o.nomes.map(function () { return COR.serie1; }),
+                cores: o.nomes.map(function () { return COR.barra; }),
                 unidade: 'chamados ativos',
                 rotulo: numero, tooltip: numero,
             }),
@@ -277,7 +279,7 @@
             pontos: o.nomes.length,
             opcao: barrasHorizontais({
                 nomes: o.nomes, valores: o.valores,
-                cores: o.nomes.map(function () { return COR.serie1; }),
+                cores: o.nomes.map(function () { return COR.barra; }),
                 unidade: 'concluídos no mês',
                 rotulo: numero, tooltip: numero,
             }),
@@ -326,12 +328,12 @@
 
     function montarTabela(destino, tabela) {
         var t = document.createElement('table');
-        t.className = 'min-w-full text-xs text-left';
+        t.className = 'table table-sm align-middle mb-0 small';
         var thead = t.createTHead().insertRow();
         tabela.cabecalho.forEach(function (c, i) {
             var th = document.createElement('th');
             th.scope = 'col';
-            th.className = 'py-2 px-2 font-semibold text-slate-600 border-b border-slate-200' + (i ? ' text-right' : '');
+            th.className = i ? 'text-end' : '';
             th.textContent = c;
             thead.appendChild(th);
         });
@@ -340,8 +342,7 @@
             var tr = tbody.insertRow();
             linha.forEach(function (valor, i) {
                 var td = tr.insertCell();
-                td.className = 'py-1.5 px-2 border-b border-slate-100 ' +
-                    (i ? 'text-right tabular-nums text-slate-800' : 'text-slate-700');
+                td.className = i ? 'text-end' : '';
                 td.textContent = typeof valor === 'number' ? numero(valor) : valor;
             });
         });
@@ -351,10 +352,10 @@
     function mostrarEstado(fig, texto) {
         var estado = fig.querySelector('[data-estado]');
         estado.textContent = texto;
-        estado.classList.remove('hidden');
-        fig.querySelector('[data-area-grafico]').classList.add('hidden');
+        estado.classList.remove('d-none');
+        fig.querySelector('[data-area-grafico]').classList.add('d-none');
         var botao = fig.querySelector('[data-alternar-tabela]');
-        if (botao) botao.classList.add('hidden');
+        if (botao) botao.classList.add('d-none');
     }
 
     function mostrarErroGeral(texto, permitirNovaTentativa) {
@@ -363,8 +364,7 @@
             if (!permitirNovaTentativa) return;
             var botao = document.createElement('button');
             botao.type = 'button';
-            botao.className = 'block mx-auto mt-3 not-italic text-xs font-medium text-blue-600 hover:text-blue-800 ' +
-                'px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-50';
+            botao.className = 'btn btn-sm btn-outline-primary d-block mx-auto mt-3';
             botao.textContent = 'Tentar de novo';
             botao.addEventListener('click', function () {
                 raiz.querySelectorAll('[data-grafico]').forEach(limparEstado);
@@ -377,17 +377,16 @@
     function limparEstado(fig) {
         var estado = fig.querySelector('[data-estado]');
         estado.replaceChildren();
-        estado.classList.add('hidden');
-        fig.querySelector('[data-area-grafico]').classList.remove('hidden');
+        estado.classList.add('d-none');
+        fig.querySelector('[data-area-grafico]').classList.remove('d-none');
         var botao = fig.querySelector('[data-alternar-tabela]');
-        if (botao) botao.classList.remove('hidden');
+        if (botao) botao.classList.remove('d-none');
     }
 
     // Tooltip também pelo teclado: Tab foca o gráfico; setas, Home e End percorrem; Esc fecha.
     function ativarTeclado(area, grafico, total, inicio) {
         if (!total) return;
         area.tabIndex = 0;
-        area.classList.add('rounded-lg', 'outline-none', 'focus-visible:ring-2', 'focus-visible:ring-blue-500');
         var atual = -1;
         function mostrar(i) {
             atual = Math.min(Math.max(i, 0), total - 1);
@@ -411,8 +410,8 @@
             var verTabela = botao.getAttribute('aria-pressed') !== 'true';
             botao.setAttribute('aria-pressed', String(verTabela));
             botao.textContent = verTabela ? 'Ver gráfico' : 'Ver tabela';
-            fig.querySelector('[data-area-tabela]').classList.toggle('hidden', !verTabela);
-            fig.querySelector('[data-area-grafico]').classList.toggle('hidden', verTabela);
+            fig.querySelector('[data-area-tabela]').classList.toggle('d-none', !verTabela);
+            fig.querySelector('[data-area-grafico]').classList.toggle('d-none', verTabela);
             if (!verTabela) graficos.forEach(function (g) { g.resize(); });
         });
     }
@@ -450,13 +449,19 @@
         }
     }
 
+    // O ECharts mede os rótulos ao desenhar: esperar a Lexend carregar evita medir com a
+    // fonte reserva (mais estreita) e cortar nomes longos depois.
+    var fontesProntas = (document.fonts && document.fonts.ready)
+        ? document.fonts.ready.catch(function () {})
+        : Promise.resolve();
+
     function carregar() {
         fetch(raiz.dataset.url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
-            .then(renderizar)
+            .then(function (dados) { return fontesProntas.then(function () { renderizar(dados); }); })
             .catch(function (erro) {
                 console.error('Erro ao carregar os gráficos:', erro);
                 mostrarErroGeral('Não foi possível carregar os dados deste gráfico.', true);

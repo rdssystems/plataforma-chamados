@@ -1,272 +1,173 @@
 {% extends 'base.html' %}
+{% load consulta %}
 
-{% block title %}{{ chamado.codigo }} — {{ chamado.titulo }} — Gestão de Chamados{% endblock %}
-{% block header_title %}Detalhe do Chamado {{ chamado.codigo }}{% endblock %}
+{% block title %}{{ chamado.codigo }} · {{ chamado.titulo }}{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Breadcrumb & Top Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center space-x-3">
-            <a href="{% url 'chamados:chamado_list' %}" class="text-sm font-medium text-slate-500 hover:text-slate-800">
-                &larr; Voltar para a lista
-            </a>
-            <span class="text-slate-300">/</span>
-            <span class="text-sm font-bold text-slate-800">{{ chamado.codigo }}</span>
-        </div>
+<nav aria-label="Trilha" class="mb-3">
+    <ol class="breadcrumb small mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'chamados:chamado_list' %}">Chamados</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ chamado.codigo }}</li>
+    </ol>
+</nav>
 
-        <div class="flex items-center space-x-3">
-            {% if user.is_admin and chamado.status not in 'concluido,cancelado' %}
-            <a href="{% url 'chamados:chamado_update' chamado.pk %}" class="inline-flex items-center px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
-                <svg class="w-3.5 h-3.5 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                Editar Chamado
-            </a>
-            {% endif %}
+<header class="cabecalho-pagina mb-4">
+    <div>
+        <p class="cabecalho-sobretitulo mb-2">{{ chamado.codigo }} · {{ chamado.get_tipo_display }}</p>
+        <h1 class="h4 mb-2">{{ chamado.titulo }}</h1>
+        <div class="d-flex flex-wrap gap-2">
+            {% include 'chamados/partials/selo_status.html' with chamado=chamado %}
+            {% include 'chamados/partials/selo_prioridade.html' with chamado=chamado %}
+            {% include 'chamados/partials/selo_plataforma.html' with plataforma=chamado.plataforma %}
+            {% if chamado.esta_atrasado %}<span class="selo selo-critico"><i class="bi bi-clock-history" aria-hidden="true"></i>Atrasado</span>{% endif %}
         </div>
     </div>
+    {% if user.is_admin and chamado.status != 'concluido' and chamado.status != 'cancelado' %}
+    <a href="{% url 'chamados:chamado_update' chamado.pk %}" class="btn btn-outline-light"><i class="bi bi-pencil" aria-hidden="true"></i> Editar chamado</a>
+    {% endif %}
+</header>
 
-    <!-- Main Grid: Info + Actions + History -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left/Center 2 Cols: Content and History -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Ticket Info Card -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border" style="border-color: {{ chamado.plataforma.cor }}; color: {{ chamado.plataforma.cor }}; background-color: {{ chamado.plataforma.cor }}15;">
-                        {{ chamado.plataforma.nome }}
-                    </span>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize bg-slate-100 text-slate-700">
-                        {{ chamado.get_tipo_display }}
-                    </span>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
-                        {% if chamado.prioridade == 'urgente' %}bg-red-100 text-red-800
-                        {% elif chamado.prioridade == 'alta' %}bg-orange-100 text-orange-800
-                        {% elif chamado.prioridade == 'media' %}bg-yellow-100 text-yellow-800
-                        {% else %}bg-slate-100 text-slate-700{% endif %}">
-                        Prioridade {{ chamado.get_prioridade_display }}
-                    </span>
-                </div>
-
-                <h2 class="text-2xl font-bold text-slate-900 leading-snug">
-                    {{ chamado.titulo }}
-                </h2>
-
-                <div class="prose max-w-none text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    {{ chamado.descricao }}
-                </div>
-
-                <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-                    <span>Aberto por <strong>{{ chamado.criado_por.get_full_name|default:chamado.criado_por.username }}</strong> em {{ chamado.criado_em|date:"d/m/Y \à\s H:i" }}</span>
-                    <span>Última atualização: {{ chamado.atualizado_em|date:"d/m/Y \à\s H:i" }}</span>
-                </div>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <section class="card shadow-sm mb-4" aria-labelledby="titulo-descricao">
+            <div class="card-body">
+                <h2 class="h6 mb-3" id="titulo-descricao">Descrição</h2>
+                <div class="descricao-chamado texto-livre">{{ chamado.descricao }}</div>
+                <p class="small text-muted mt-3 mb-0">
+                    Aberto por <strong>{{ chamado.criado_por.get_full_name|default:chamado.criado_por.username }}</strong> em {{ chamado.criado_em|date:"d/m/Y \à\s H:i" }}
+                    · Última atualização em {{ chamado.atualizado_em|date:"d/m/Y \à\s H:i" }}
+                </p>
             </div>
+        </section>
 
-            <!-- Linha do Tempo Unificada -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h4 class="text-base font-bold text-slate-800 mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Linha do Tempo de Atividades
-                </h4>
-
-                <div class="flow-root">
-                    <ul class="-mb-8">
-                        {% for ev in linha_do_tempo %}
-                        <li>
-                            <div class="relative pb-8">
-                                {% if not forloop.last %}
-                                <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true"></span>
-                                {% endif %}
-                                <div class="relative flex space-x-3">
-                                    <div>
-                                        <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white text-xs font-bold
-                                            {% if ev.tipo == 'criacao' %}bg-green-100 text-green-700
-                                            {% elif ev.tipo == 'mudanca_status' %}bg-blue-100 text-blue-700
-                                            {% elif ev.tipo == 'comentario' %}bg-purple-100 text-purple-700
-                                            {% else %}bg-amber-100 text-amber-700{% endif %}">
-                                            {% if ev.tipo == 'criacao' %}★
-                                            {% elif ev.tipo == 'mudanca_status' %}&rarr;
-                                            {% elif ev.tipo == 'comentario' %}💬
-                                            {% else %}📎{% endif %}
-                                        </span>
-                                    </div>
-                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                        <div>
-                                            <p class="text-xs text-slate-800 font-semibold">
-                                                {{ ev.titulo }}
-                                            </p>
-                                            <p class="text-xs text-slate-600 mt-0.5 whitespace-pre-wrap">
-                                                {{ ev.descricao }}
-                                            </p>
-                                            {% if ev.motivo %}
-                                            <div class="mt-1.5 p-2 rounded bg-amber-50 border border-amber-100 text-xs text-amber-900">
-                                                <strong>Motivo informado:</strong> {{ ev.motivo }}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="text-right text-xs whitespace-nowrap text-slate-400">
-                                            {{ ev.data|date:"d/m/Y H:i" }}
-                                        </div>
-                                    </div>
-                                </div>
+        <section class="card shadow-sm mb-4" aria-labelledby="titulo-linha-tempo">
+            <div class="card-body">
+                <h2 class="h6 mb-3" id="titulo-linha-tempo">Linha do tempo</h2>
+                <ol class="linha-tempo">
+                    {% for ev in linha_do_tempo %}
+                    <li class="linha-tempo-item">
+                        <span class="linha-tempo-icone {{ ev.tipo }}" aria-hidden="true">
+                            {% if ev.tipo == 'criacao' %}<i class="bi bi-plus-lg"></i>
+                            {% elif ev.tipo == 'mudanca_status' %}<i class="bi bi-arrow-left-right"></i>
+                            {% elif ev.tipo == 'comentario' %}<i class="bi bi-chat-left-text"></i>
+                            {% else %}<i class="bi bi-paperclip"></i>{% endif %}
+                        </span>
+                        <div class="linha-tempo-corpo">
+                            <div class="d-flex flex-wrap justify-content-between gap-2">
+                                <p class="fw-semibold small mb-0">{{ ev.titulo }}</p>
+                                <span class="small text-muted text-nowrap">{{ ev.data|date:"d/m/Y H:i" }}</span>
                             </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Seção de Anexos -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-                <div class="flex items-center justify-between">
-                    <h4 class="text-base font-bold text-slate-800 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                        Arquivos Anexados ({{ anexos.count }})
-                    </h4>
-                    <span class="text-xs text-slate-400">Limite de 10 MB por arquivo</span>
-                </div>
-
-                <!-- Lista de Anexos -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {% for anexo in anexos %}
-                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
-                        <div class="flex items-center space-x-2 min-w-0">
-                            <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <div class="min-w-0">
-                                <p class="font-medium text-slate-800 truncate" title="{{ anexo.nome_original }}">{{ anexo.nome_original }}</p>
-                                <p class="text-[10px] text-slate-400">Por {{ anexo.enviado_por.username }} em {{ anexo.enviado_em|date:"d/m/Y H:i" }}</p>
-                            </div>
+                            <p class="small text-muted mb-0 texto-livre">{{ ev.descricao }}</p>
+                            {% if ev.motivo %}
+                            <div class="alert alert-warning small py-2 px-3 mt-2 mb-0"><strong>Motivo informado:</strong> <span class="texto-livre">{{ ev.motivo }}</span></div>
+                            {% endif %}
                         </div>
-                        <a href="{% url 'chamados:anexo_download' chamado.pk anexo.pk %}" class="ml-2 text-blue-600 hover:text-blue-800 font-bold flex-shrink-0" title="Baixar Arquivo">
-                            Baixar
-                        </a>
-                    </div>
-                    {% empty %}
-                    <p class="text-xs text-slate-500 italic py-2 col-span-2">Nenhum anexo enviado.</p>
+                    </li>
                     {% endfor %}
-                </div>
+                </ol>
+            </div>
+        </section>
 
-                <!-- Formulário de Upload -->
-                <form method="post" action="{% url 'chamados:anexo_upload' chamado.pk %}" enctype="multipart/form-data" class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
+        <section class="card shadow-sm mb-4" aria-labelledby="titulo-anexos">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
+                    <h2 class="h6 mb-0" id="titulo-anexos">Anexos <span class="badge text-bg-light border">{{ anexos.count }}</span></h2>
+                    <span class="small text-muted">Até 10 MB por arquivo</span>
+                </div>
+                {% for anexo in anexos %}
+                <div class="painel-linha">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark text-muted fs-5" aria-hidden="true"></i>
+                        <div class="min-w-0">
+                            <div class="small fw-semibold text-break">{{ anexo.nome_original }}</div>
+                            <div class="small text-muted">Enviado por {{ anexo.enviado_por.get_full_name|default:anexo.enviado_por.username }} em {{ anexo.enviado_em|date:"d/m/Y H:i" }}</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'chamados:anexo_download' chamado.pk anexo.pk %}" class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-download" aria-hidden="true"></i> Baixar<span class="visually-hidden"> {{ anexo.nome_original }}</span></a>
+                </div>
+                {% empty %}
+                <p class="small text-muted mb-0">Nenhum anexo enviado.</p>
+                {% endfor %}
+
+                <form method="post" action="{% url 'chamados:anexo_upload' chamado.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end mt-3 pt-3 border-top">
                     {% csrf_token %}
-                    <div class="flex-1 w-full">
+                    <div class="col-sm">
+                        <label for="{{ anexo_form.arquivo.id_for_label }}" class="form-label small">Enviar arquivo</label>
                         {{ anexo_form.arquivo }}
                     </div>
-                    <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow transition flex-shrink-0">
-                        Enviar Anexo
-                    </button>
+                    <div class="col-sm-auto"><button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-upload" aria-hidden="true"></i> Enviar anexo</button></div>
                 </form>
             </div>
+        </section>
 
-            <!-- Seção de Comentários HTMX -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <section class="card shadow-sm mb-4">
+            <div class="card-body">
                 {% include 'chamados/partials/comentarios_list.html' %}
             </div>
-        </div>
+        </section>
+    </div>
 
-        <!-- Right 1 Col: Status & Actions Sidebar -->
-        <div class="space-y-6">
-            <!-- Status Card -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-                <div>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status Atual</span>
-                    <div class="mt-1 flex items-center">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold
-                            {% if chamado.status == 'concluido' %}bg-emerald-100 text-emerald-800
-                            {% elif chamado.status == 'cancelado' %}bg-slate-200 text-slate-800
-                            {% elif chamado.status == 'em_revisao' %}bg-purple-100 text-purple-800
-                            {% elif chamado.status == 'em_andamento' %}bg-blue-100 text-blue-800
-                            {% else %}bg-amber-100 text-amber-800{% endif %}">
-                            {{ chamado.get_status_display }}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="pt-3 border-t border-slate-100 space-y-3 text-xs">
-                    <div>
-                        <span class="text-slate-400 block">Responsável:</span>
+    <div class="col-lg-4">
+        <section class="card shadow-sm mb-4" aria-labelledby="titulo-situacao">
+            <div class="card-body">
+                <h2 class="h6 mb-3" id="titulo-situacao">Situação</h2>
+                <dl class="dados-chamado mb-0">
+                    <dt>Status atual</dt>
+                    <dd>{% include 'chamados/partials/selo_status.html' with chamado=chamado %}</dd>
+                    <dt>Responsável</dt>
+                    <dd>
                         {% if chamado.responsavel %}
-                        <div class="flex items-center space-x-2 mt-1">
-                            <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
-                                {{ chamado.responsavel.username|slice:":2"|upper }}
-                            </span>
-                            <span class="font-medium text-slate-800">{{ chamado.responsavel.get_full_name|default:chamado.responsavel.username }}</span>
-                        </div>
-                        {% else %}
-                        <span class="text-amber-600 font-medium italic mt-0.5 block">Não atribuído</span>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <span class="text-slate-400 block">Prazo de Entrega:</span>
+                        <span class="d-inline-flex align-items-center gap-2">{% include 'partials/avatar.html' with pessoa=chamado.responsavel tamanho='sm' %}{{ chamado.responsavel.get_full_name|default:chamado.responsavel.username }}</span>
+                        {% else %}<span class="selo selo-atencao"><i class="bi bi-person-exclamation" aria-hidden="true"></i>Sem responsável</span>{% endif %}
+                    </dd>
+                    <dt>Prazo</dt>
+                    <dd>
                         {% if chamado.prazo %}
-                        <span class="font-medium {% if chamado.esta_atrasado %}text-red-600 font-bold{% else %}text-slate-800{% endif %} mt-0.5 block">
-                            {{ chamado.prazo|date:"d/m/Y" }}
-                            {% if chamado.esta_atrasado %}(Atrasado){% endif %}
-                        </span>
-                        {% else %}
-                        <span class="text-slate-400 italic mt-0.5 block">Sem prazo definido</span>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <span class="text-slate-400 block">Iniciado em:</span>
-                        <span class="text-slate-800 mt-0.5 block">{{ chamado.iniciado_em|date:"d/m/Y H:i"|default:"—" }}</span>
-                    </div>
-
-                    <div>
-                        <span class="text-slate-400 block">Concluído em:</span>
-                        <span class="text-slate-800 mt-0.5 block">{{ chamado.concluido_em|date:"d/m/Y H:i"|default:"—" }}</span>
-                    </div>
-
+                            {% if chamado.esta_atrasado %}<span class="atrasado"><i class="bi bi-clock-history" aria-hidden="true"></i> {{ chamado.prazo|date:"d/m/Y" }} · atrasado</span>
+                            {% else %}{{ chamado.prazo|date:"d/m/Y" }}{% endif %}
+                        {% else %}<span class="text-muted">Sem prazo definido</span>{% endif %}
+                    </dd>
+                    <dt>Iniciado em</dt>
+                    <dd>{{ chamado.iniciado_em|date:"d/m/Y H:i"|default:"—" }}</dd>
+                    <dt>Concluído em</dt>
+                    <dd>{{ chamado.concluido_em|date:"d/m/Y H:i"|default:"—" }}</dd>
                     {% if chamado.tempo_resolucao %}
-                    <div>
-                        <span class="text-slate-400 block">Tempo Total de Resolução:</span>
-                        <span class="text-slate-800 font-medium mt-0.5 block">{{ chamado.tempo_resolucao }}</span>
-                    </div>
+                    <dt>Tempo total de resolução</dt>
+                    <dd>{{ chamado.tempo_resolucao|duracao }}</dd>
                     {% endif %}
-                </div>
+                </dl>
+            </div>
+        </section>
 
-                <!-- Ações de Transição Permitidas -->
-                {% if acoes_possiveis %}
-                <div class="pt-4 border-t border-slate-100 space-y-2">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Ações Disponíveis</span>
+        {% if acoes_possiveis %}
+        <section class="card shadow-sm mb-4" aria-labelledby="titulo-acoes">
+            <div class="card-body">
+                <h2 class="h6 mb-3" id="titulo-acoes">Próximas ações</h2>
+                <div class="d-grid gap-2">
                     {% for acao in acoes_possiveis %}
-                    <div>
-                        {% if acao.requer_comentario %}
-                        <!-- Botão que abre modal ou detalha formulário com comentário -->
-                        <details class="group bg-slate-50 border rounded-lg p-2.5">
-                            <summary class="cursor-pointer text-xs font-semibold text-slate-700 flex items-center justify-between">
-                                <span>{{ acao.label }}</span>
-                                <span class="text-slate-400 text-xs">&darr;</span>
-                            </summary>
-                            <form method="post" action="{% url 'chamados:chamado_mudar_status' chamado.pk %}" class="mt-3 space-y-2">
-                                {% csrf_token %}
-                                <input type="hidden" name="novo_status" value="{{ acao.status }}">
-                                <textarea name="comentario" required placeholder="Informe o motivo obrigatório..." rows="2" class="w-full text-xs p-2 border rounded focus:ring-1 focus:ring-blue-500"></textarea>
-                                <button type="submit" class="w-full py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded shadow transition">
-                                    Confirmar {{ acao.label }}
-                                </button>
-                            </form>
-                        </details>
-                        {% else %}
-                        <form method="post" action="{% url 'chamados:chamado_mudar_status' chamado.pk %}">
+                    {% if acao.requer_comentario %}
+                    <details class="border rounded p-2">
+                        <summary class="btn btn-sm {% if acao.status == 'cancelado' %}btn-outline-danger{% else %}btn-outline-primary{% endif %} w-100">{{ acao.label }}</summary>
+                        <form method="post" action="{% url 'chamados:chamado_mudar_status' chamado.pk %}" class="mt-2">
                             {% csrf_token %}
                             <input type="hidden" name="novo_status" value="{{ acao.status }}">
-                            <button type="submit" class="w-full py-2 px-3 text-xs font-semibold rounded-lg shadow-sm transition text-white
-                                {% if acao.cor == 'blue' %}bg-blue-600 hover:bg-blue-700
-                                {% elif acao.cor == 'emerald' %}bg-emerald-600 hover:bg-emerald-700
-                                {% elif acao.cor == 'amber' %}bg-amber-600 hover:bg-amber-700
-                                {% else %}bg-slate-700 hover:bg-slate-800{% endif %}">
-                                {{ acao.label }}
-                            </button>
+                            <label for="motivo-{{ forloop.counter }}" class="form-label small">Motivo (obrigatório)</label>
+                            <textarea id="motivo-{{ forloop.counter }}" name="comentario" required rows="3" class="form-control form-control-sm mb-2"></textarea>
+                            <button type="submit" class="btn btn-sm {% if acao.status == 'cancelado' %}btn-danger{% else %}btn-primary{% endif %} w-100">Confirmar: {{ acao.label|lower }}</button>
                         </form>
-                        {% endif %}
-                    </div>
+                    </details>
+                    {% else %}
+                    <form method="post" action="{% url 'chamados:chamado_mudar_status' chamado.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="novo_status" value="{{ acao.status }}">
+                        <button type="submit" class="btn {% if acao.status == 'concluido' %}btn-success{% else %}btn-primary{% endif %} w-100">{{ acao.label }}</button>
+                    </form>
+                    {% endif %}
                     {% endfor %}
                 </div>
-                {% endif %}
             </div>
-        </div>
+        </section>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

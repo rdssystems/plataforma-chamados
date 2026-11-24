@@ -1,212 +1,106 @@
 {% extends 'base.html' %}
 
-{% block title %}Chamados — Gestão de Chamados{% endblock %}
-{% block header_title %}Central de Chamados{% endblock %}
+{% block title %}Chamados{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Top Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h3 class="text-xl font-bold text-slate-800">Chamados Registrados</h3>
-            <p class="text-sm text-slate-500">
-                {% if user.is_admin %}Visualizando todas as demandas do time.{% else %}Visualizando suas demandas atribuídas e criadas.{% endif %}
-            </p>
-        </div>
-        <div class="flex items-center space-x-3">
-            <a href="{% url 'chamados:chamado_create' %}" class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Novo Chamado
-            </a>
-        </div>
+<header class="cabecalho-pagina mb-4">
+    <div>
+        <h1 class="h4 mb-1">Chamados</h1>
+        <p class="mb-0">{% if user.is_admin %}Todas as demandas da equipe.{% else %}Demandas atribuídas a você e as que você abriu.{% endif %}</p>
     </div>
+    <a href="{% url 'chamados:chamado_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Abrir chamado</a>
+</header>
 
-    <!-- Filters Area -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <form method="get" class="space-y-3">
-            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                <div class="sm:col-span-2">
-                    <input type="text" name="q" value="{{ filtros.q }}" placeholder="Buscar por código (ex: CH-0001) ou título..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <select name="status" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todos os Status</option>
-                        {% for val, label in status_choices %}
-                        <option value="{{ val }}" {% if filtros.status == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div>
-                    <select name="prioridade" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todas as Prioridades</option>
-                        {% for val, label in prioridade_choices %}
-                        <option value="{{ val }}" {% if filtros.prioridade == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div>
-                    <select name="tipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todos os Tipos</option>
-                        {% for val, label in tipo_choices %}
-                        <option value="{{ val }}" {% if filtros.tipo == val %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div>
-                    <select name="plataforma" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todas as Plataformas</option>
-                        {% for plat in plataformas %}
-                        <option value="{{ plat.id }}" {% if filtros.plataforma == plat.id|stringformat:"s" %}selected{% endif %}>{{ plat.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                {% if user.is_admin %}
-                <div>
-                    <select name="responsavel" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todos os Responsáveis</option>
-                        {% for resp in responsaveis %}
-                        <option value="{{ resp.id }}" {% if filtros.responsavel == resp.id|stringformat:"s" %}selected{% endif %}>{{ resp.get_full_name|default:resp.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-
-                <div class="flex items-center space-x-2">
-                    <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" title="Data Início" class="w-full px-2 py-2 border border-slate-300 rounded-lg text-xs">
-                    <span class="text-slate-400 text-xs">até</span>
-                    <input type="date" name="data_fim" value="{{ filtros.data_fim }}" title="Data Fim" class="w-full px-2 py-2 border border-slate-300 rounded-lg text-xs">
-                </div>
-            </div>
-
-            <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                <a href="{% url 'chamados:chamado_list' %}" class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 text-xs font-medium">
-                    Limpar Filtros
-                </a>
-                <button type="submit" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">
-                    Aplicar Filtros
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Chamados Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200 text-sm text-left">
-                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase text-xs">
-                    <tr>
-                        <th class="px-6 py-3.5">Código / Título</th>
-                        <th class="px-6 py-3.5">Plataforma</th>
-                        <th class="px-6 py-3.5">Tipo</th>
-                        <th class="px-6 py-3.5">Prioridade</th>
-                        <th class="px-6 py-3.5">Status</th>
-                        <th class="px-6 py-3.5">Responsável</th>
-                        <th class="px-6 py-3.5">Prazo</th>
-                        <th class="px-6 py-3.5 text-right">Ação</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 text-slate-700">
-                    {% for c in chamados %}
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="px-6 py-4">
-                            <div class="flex flex-col">
-                                <a href="{% url 'chamados:chamado_detail' c.pk %}" class="font-bold text-blue-600 hover:underline">
-                                    {{ c.codigo }}
-                                </a>
-                                <span class="font-medium text-slate-900 line-clamp-1 mt-0.5">
-                                    {{ c.titulo }}
-                                </span>
-                                <span class="text-xs text-slate-400 mt-0.5">Criado por {{ c.criado_por.get_full_name|default:c.criado_por.username }} em {{ c.criado_em|date:"d/m/Y H:i" }}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border" style="border-color: {{ c.plataforma.cor }}; color: {{ c.plataforma.cor }}; background-color: {{ c.plataforma.cor }}15;">
-                                {{ c.plataforma.nome }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-xs font-medium capitalize text-slate-600">
-                            {{ c.get_tipo_display }}
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
-                                {% if c.prioridade == 'urgente' %}bg-red-100 text-red-800
-                                {% elif c.prioridade == 'alta' %}bg-orange-100 text-orange-800
-                                {% elif c.prioridade == 'media' %}bg-yellow-100 text-yellow-800
-                                {% else %}bg-slate-100 text-slate-700{% endif %}">
-                                {{ c.get_prioridade_display }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
-                                {% if c.status == 'concluido' %}bg-emerald-100 text-emerald-800
-                                {% elif c.status == 'cancelado' %}bg-slate-200 text-slate-800
-                                {% elif c.status == 'em_revisao' %}bg-purple-100 text-purple-800
-                                {% elif c.status == 'em_andamento' %}bg-blue-100 text-blue-800
-                                {% else %}bg-amber-100 text-amber-800{% endif %}">
-                                {{ c.get_status_display }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-xs text-slate-600">
-                            {% if c.responsavel %}
-                            <div class="flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">
-                                    {{ c.responsavel.username|slice:":2"|upper }}
-                                </span>
-                                <span>{{ c.responsavel.get_full_name|default:c.responsavel.username }}</span>
-                            </div>
-                            {% else %}
-                            <span class="text-slate-400 italic">Sem responsável</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 text-xs">
-                            {% if c.prazo %}
-                                <span class="{% if c.esta_atrasado %}text-red-600 font-bold flex items-center{% else %}text-slate-600{% endif %}">
-                                    {% if c.esta_atrasado %}
-                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    {% endif %}
-                                    {{ c.prazo|date:"d/m/Y" }}
-                                </span>
-                            {% else %}
-                                <span class="text-slate-400">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <a href="{% url 'chamados:chamado_detail' c.pk %}" class="text-xs font-semibold text-blue-600 hover:text-blue-800">
-                                Ver Detalhes &rarr;
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="px-6 py-10 text-center text-slate-500 text-sm">
-                            Nenhum chamado encontrado com os filtros selecionados.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        {% if is_paginated %}
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-            <div class="space-x-1">
-                {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Anterior</a>
-                {% endif %}
-                {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Próxima</a>
-                {% endif %}
-            </div>
-        </div>
+<section class="filtros-pagina mb-3" aria-labelledby="titulo-filtros">
+    <h2 class="h6 mb-3" id="titulo-filtros">Filtros</h2>
+    <form method="get" class="row g-2" novalidate>
+        {% include 'chamados/partials/filtro_campo.html' with nome='q' rotulo='Buscar' tipo='busca' classes='col-12 col-lg-6' placeholder='Código (ex.: CH-0001) ou título' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='situacao' rotulo='Situação' opcoes=situacoes vazio='Todas as situações' classes='col-sm-6 col-lg-3' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='status' rotulo='Status' opcoes=status_choices vazio='Todos os status' classes='col-sm-6 col-lg-3' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='prioridade' rotulo='Prioridade' opcoes=prioridade_choices vazio='Todas as prioridades' classes='col-sm-6 col-lg-3' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='tipo' rotulo='Tipo' opcoes=tipo_choices vazio='Todos os tipos' classes='col-sm-6 col-lg-3' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='plataforma' rotulo='Plataforma' registros=plataformas vazio='Todas as plataformas' classes='col-sm-6 col-lg-3' %}
+        {% if user.is_admin %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='responsavel' rotulo='Responsável' registros=responsaveis pessoas=True vazio='Todos os responsáveis' classes='col-sm-6 col-lg-3' %}
         {% endif %}
-    </div>
+        {% include 'chamados/partials/filtro_campo.html' with nome='data_inicio' rotulo='Criado a partir de' tipo='date' classes='col-sm-6 col-lg-3' %}
+        {% include 'chamados/partials/filtro_campo.html' with nome='data_fim' rotulo='Criado até' tipo='date' classes='col-sm-6 col-lg-3' %}
+        <div class="col-12 d-flex flex-wrap justify-content-end gap-2 pt-1">
+            <a href="{% url 'chamados:chamado_list' %}" class="btn btn-outline-secondary">Limpar filtros</a>
+            <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+        </div>
+    </form>
+</section>
+
+{% if filtros_ativos %}
+<div class="filtros-ativos mb-3" aria-label="Filtros ativos">
+    <span class="small text-muted">Filtrando por:</span>
+    {% for filtro in filtros_ativos %}
+    <span class="filtro-ativo">{{ filtro.rotulo }} <a href="{{ filtro.remover }}" class="text-reset" aria-label="Remover filtro {{ filtro.rotulo }}"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>
+    {% endfor %}
 </div>
+{% endif %}
+
+{% if not filtros_validos %}
+<div class="alert alert-warning" role="status">
+    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Corrija os filtros destacados acima para ver os chamados.
+</div>
+{% else %}
+<section class="card shadow-sm" aria-labelledby="titulo-resultados">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h2 class="h6 mb-0" id="titulo-resultados">Resultados</h2>
+        <span class="small text-muted">{{ total }} chamado{{ total|pluralize }}</span>
+    </div>
+    {% if chamados %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Chamado</th>
+                    <th scope="col">Plataforma</th>
+                    <th scope="col">Prioridade</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Responsável</th>
+                    <th scope="col">Prazo</th>
+                    <th scope="col" class="text-end"><span class="visually-hidden">Ação</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in chamados %}
+                <tr>
+                    <td style="min-width: 16rem;">
+                        <a href="{% url 'chamados:chamado_detail' c.pk %}" class="fw-semibold text-decoration-none">{{ c.codigo }}</a>
+                        <span class="small text-muted">· {{ c.get_tipo_display }}</span>
+                        <div class="text-truncate" style="max-width: 24rem;">{{ c.titulo }}</div>
+                        <div class="small text-muted">Aberto por {{ c.criado_por.get_full_name|default:c.criado_por.username }} em {{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                    </td>
+                    <td>{% include 'chamados/partials/selo_plataforma.html' with plataforma=c.plataforma %}</td>
+                    <td>{% include 'chamados/partials/selo_prioridade.html' with chamado=c %}</td>
+                    <td>{% include 'chamados/partials/selo_status.html' with chamado=c %}</td>
+                    <td class="small text-nowrap">
+                        {% if c.responsavel %}
+                        <span class="d-inline-flex align-items-center gap-2">{% include 'partials/avatar.html' with pessoa=c.responsavel tamanho='sm' %}{{ c.responsavel.get_full_name|default:c.responsavel.username }}</span>
+                        {% else %}<span class="text-muted">Sem responsável</span>{% endif %}
+                    </td>
+                    <td class="small text-nowrap">
+                        {% if c.prazo %}
+                            {% if c.esta_atrasado %}<span class="atrasado"><i class="bi bi-clock-history" aria-hidden="true"></i> {{ c.prazo|date:"d/m/Y" }} <span class="visually-hidden">(atrasado)</span></span>
+                            {% else %}{{ c.prazo|date:"d/m/Y" }}{% endif %}
+                        {% else %}<span class="text-muted">—<span class="visually-hidden">sem prazo</span></span>{% endif %}
+                    </td>
+                    <td class="text-end"><a href="{% url 'chamados:chamado_detail' c.pk %}" class="btn btn-sm btn-outline-primary" aria-label="Abrir {{ c.codigo }}">Abrir</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center py-5">
+        <p class="mb-1 fw-semibold">Nenhum chamado atende aos filtros selecionados.</p>
+        <p class="small text-muted mb-0">{% if filtros_ativos %}Ajuste ou remova algum filtro acima.{% else %}Use “Abrir chamado” para registrar a primeira demanda.{% endif %}</p>
+    </div>
+    {% endif %}
+</section>
+{% include 'partials/paginacao.html' %}
+{% endif %}
 {% endblock %}

@@ -8,7 +8,8 @@ Sistema web completo de triagem, acompanhamento e relatórios de chamados técni
 
 - **Backend:** Python 3.12+, Django 5.x
 - **Banco de Dados:** SQLite (padrão de desenvolvimento) com suporte a PostgreSQL via `DATABASE_URL` (dj-database-url / psycopg2)
-- **Frontend Interativo:** Templates Django server-side, [Tailwind CSS](https://tailwindcss.com) (CDN), [HTMX](https://htmx.org) (comentários reativos e updates sem reload), [SortableJS](https://sortablejs.github.io/Sortable/) (Kanban drag-and-drop) e [Apache ECharts](https://echarts.apache.org/) 6.1 (gráficos interativos do dashboard: evolução semanal, plataformas, desenvolvedores e prioridades, com tooltip, versão em tabela e descrição para leitores de tela).
+- **Padrão visual:** base compartilhada dos sistemas da Secretaria (referência: Naicas): [Bootstrap 5.3](https://getbootstrap.com) + [Bootstrap Icons](https://icons.getbootstrap.com), fonte Lexend e tokens anil/urucum/ipê/folha em `static/css/secretaria.css`. A adoção do padrão de dashboards está registrada em [docs/ficha-adocao-dashboard.md](docs/ficha-adocao-dashboard.md).
+- **Frontend Interativo:** Templates Django server-side, [HTMX](https://htmx.org) (comentários reativos e updates sem reload), [SortableJS](https://sortablejs.github.io/Sortable/) (Kanban drag-and-drop) e [Apache ECharts](https://echarts.apache.org/) 6.1 (gráficos interativos do dashboard: evolução semanal, plataformas, desenvolvedores e prioridades, com tooltip, versão em tabela e descrição para leitores de tela).
 - **Exportações:** [openpyxl](https://openpyxl.readthedocs.io/) (relatórios Excel com abas e formatação profissional) e [xhtml2pdf / WeasyPrint](https://xhtml2pdf.readthedocs.io/) (relatórios gerenciais em PDF).
 - **Auditoria:** [django-simple-history](https://django-simple-history.readthedocs.io/) e histórico centralizado de mudanças de status.
 - **Tempo real:** [Django Channels](https://channels.readthedocs.io/) (WebSocket) servido pelo [Daphne](https://github.com/django/daphne), com Redis em produção, para o chat entre usuários, a lista de quem está online e as notificações instantâneas.
@@ -157,8 +158,8 @@ pytest -v
 ├── relatorios/         # Serviço unificado de métricas (services.py) e exportadores (Excel e PDF)
 ├── notificacoes/       # Central e sino de notificações no topo (com aviso em tempo real)
 ├── chat/               # Chat direto entre usuários, presença online e WebSocket (consumers.py)
-├── templates/          # Templates HTML Django com Tailwind CSS
-└── static/             # Arquivos estáticos (JavaScript, CSS, ícones)
+├── templates/          # Templates Django (Bootstrap 5.3); parciais compartilhados em templates/partials/
+└── static/             # secretaria.css (identidade), JS de navegação, chat, kanban e gráficos
 ```
 
 ---

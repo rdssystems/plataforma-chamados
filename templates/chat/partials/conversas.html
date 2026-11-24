@@ -1,34 +1,19 @@
 {% for c in conversas %}
-<a href="{% url 'chat:conversa' c.pk %}" data-conversa-id="{{ c.pk }}"
-   class="flex items-center gap-3 px-2 py-2.5 rounded-lg transition {% if c.pk == conversa_ativa_id %}bg-blue-50{% else %}hover:bg-slate-50{% endif %}">
-    {% include 'chat/partials/avatar.html' with pessoa=c.outro %}
-    <div class="flex-1 min-w-0">
-        <div class="flex items-baseline justify-between gap-2">
-            <p class="text-sm truncate {% if c.nao_lidas %}font-semibold text-slate-900{% else %}font-medium text-slate-700{% endif %}">
-                {{ c.outro.get_full_name|default:c.outro.username }}
-            </p>
-            {% if c.ultima_mensagem %}
-            <span class="text-[11px] text-slate-400 flex-shrink-0">{{ c.ultima_mensagem.criada_em|date:"d/m H:i" }}</span>
-            {% endif %}
-        </div>
-        <div class="flex items-center justify-between gap-2">
-            <p class="text-xs truncate {% if c.nao_lidas %}text-slate-700{% else %}text-slate-500{% endif %}">
-                {% if c.ultima_mensagem %}
-                    {% if c.ultima_mensagem.autor_id == user.pk %}Você: {% endif %}{{ c.ultima_mensagem.texto|truncatechars:60 }}
-                {% else %}
-                    Nenhuma mensagem ainda
-                {% endif %}
-            </p>
-            {% if c.nao_lidas %}
-            <span class="inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white bg-blue-600 rounded-full flex-shrink-0">
-                {{ c.nao_lidas }}
+<a href="{% url 'chat:conversa' c.pk %}" data-conversa-id="{{ c.pk }}" class="chat-item{% if c.pk == conversa_ativa_id %} ativa{% endif %}"{% if c.pk == conversa_ativa_id %} aria-current="page"{% endif %}>
+    {% include 'partials/avatar.html' with pessoa=c.outro tamanho='lg' %}
+    <span class="flex-grow-1 min-w-0">
+        <span class="d-flex justify-content-between align-items-baseline gap-2">
+            <span class="small text-truncate {% if c.nao_lidas %}fw-semibold{% else %}fw-medium{% endif %}">{{ c.outro.get_full_name|default:c.outro.username }}</span>
+            {% if c.ultima_mensagem %}<span class="text-muted flex-shrink-0" style="font-size: .7rem">{{ c.ultima_mensagem.criada_em|date:"d/m H:i" }}</span>{% endif %}
+        </span>
+        <span class="d-flex justify-content-between align-items-center gap-2">
+            <span class="small text-truncate {% if c.nao_lidas %}text-body{% else %}text-muted{% endif %}">
+                {% if c.ultima_mensagem %}{% if c.ultima_mensagem.autor_id == user.pk %}Você: {% endif %}{{ c.ultima_mensagem.texto|truncatechars:60 }}{% else %}Nenhuma mensagem ainda{% endif %}
             </span>
-            {% endif %}
-        </div>
-    </div>
+            {% if c.nao_lidas %}<span class="chat-nao-lidas flex-shrink-0">{{ c.nao_lidas }}<span class="visually-hidden"> não lidas</span></span>{% endif %}
+        </span>
+    </span>
 </a>
 {% empty %}
-<p class="px-3 py-6 text-sm text-slate-400 text-center">
-    Nenhuma conversa ainda.<br>Abra a aba <strong class="text-slate-500">Online</strong> para começar.
-</p>
+<p class="small text-muted text-center py-4 mb-0">Nenhuma conversa ainda.<br>Abra a aba <strong>Online</strong> para começar.</p>
 {% endfor %}

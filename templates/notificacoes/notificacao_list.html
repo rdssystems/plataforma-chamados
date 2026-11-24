@@ -1,68 +1,43 @@
 {% extends 'base.html' %}
 
-{% block title %}Notificações — Gestão de Chamados{% endblock %}
-{% block header_title %}Suas Notificações{% endblock %}
+{% block title %}Notificações{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
-    <!-- Top Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h3 class="text-xl font-bold text-slate-800">Notificações e Avisos</h3>
-            <p class="text-sm text-slate-500">
-                Acompanhe chamados atribuídos a você, novos comentários e alterações de status.
-            </p>
-        </div>
-        <div class="flex items-center space-x-3">
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <header class="cabecalho-pagina mb-4">
+            <div>
+                <h1 class="h4 mb-1">Notificações</h1>
+                <p class="mb-0">Chamados atribuídos a você, novos comentários e mudanças de status.</p>
+            </div>
             {% if total_nao_lidas > 0 %}
             <form method="post" action="{% url 'notificacoes:marcar_todas' %}">
                 {% csrf_token %}
-                <button type="submit" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg shadow-sm transition">
-                    <svg class="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    Marcar todas como lidas
-                </button>
+                <button type="submit" class="btn btn-outline-light"><i class="bi bi-check2-all" aria-hidden="true"></i> Marcar todas como lidas</button>
             </form>
             {% endif %}
-        </div>
-    </div>
+        </header>
 
-    <!-- Filtros de Notificação -->
-    <div class="flex items-center space-x-2 border-b border-slate-200 pb-3 text-sm">
-        <a href="{% url 'notificacoes:notificacao_list' %}" class="px-3 py-1.5 rounded-lg font-medium transition {% if not filtro %}bg-blue-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
-            Todas
-        </a>
-        <a href="?filtro=nao_lidas" class="px-3 py-1.5 rounded-lg font-medium transition {% if filtro == 'nao_lidas' %}bg-blue-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
-            Não Lidas ({{ total_nao_lidas }})
-        </a>
-        <a href="?filtro=lidas" class="px-3 py-1.5 rounded-lg font-medium transition {% if filtro == 'lidas' %}bg-blue-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
-            Lidas
-        </a>
-    </div>
+        <nav class="mb-3" aria-label="Filtrar notificações">
+            <ul class="nav nav-pills gap-1">
+                <li class="nav-item"><a class="nav-link{% if not filtro %} active{% endif %}" href="{% url 'notificacoes:notificacao_list' %}"{% if not filtro %} aria-current="page"{% endif %}>Todas</a></li>
+                <li class="nav-item"><a class="nav-link{% if filtro == 'nao_lidas' %} active{% endif %}" href="?filtro=nao_lidas"{% if filtro == 'nao_lidas' %} aria-current="page"{% endif %}>Não lidas <span class="badge rounded-pill text-bg-light border">{{ total_nao_lidas }}</span></a></li>
+                <li class="nav-item"><a class="nav-link{% if filtro == 'lidas' %} active{% endif %}" href="?filtro=lidas"{% if filtro == 'lidas' %} aria-current="page"{% endif %}>Lidas</a></li>
+            </ul>
+        </nav>
 
-    <!-- Notificações List -->
-    <div class="space-y-3">
-        {% for notif in notificacoes %}
-            {% include 'notificacoes/partials/notificacao_item.html' with notif=notif %}
-        {% empty %}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 text-sm">
-            Nenhuma notificação encontrada no momento.
-        </div>
-        {% endfor %}
+        <section class="card shadow-sm" aria-label="Lista de notificações">
+            <div class="card-body py-2">
+                {% for notif in notificacoes %}
+                    {% include 'notificacoes/partials/notificacao_item.html' with notif=notif %}
+                {% empty %}
+                <p class="text-center text-muted py-4 mb-0">
+                    {% if filtro == 'nao_lidas' %}Nenhuma notificação não lida. Tudo em dia.{% elif filtro == 'lidas' %}Nenhuma notificação lida ainda.{% else %}Você ainda não recebeu notificações.{% endif %}
+                </p>
+                {% endfor %}
+            </div>
+        </section>
+        {% include 'partials/paginacao.html' %}
     </div>
-
-    <!-- Pagination -->
-    {% if is_paginated %}
-    <div class="px-6 py-4 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs text-slate-500">
-        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-        <div class="space-x-1">
-            {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}{% if filtro %}&filtro={{ filtro }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Anterior</a>
-            {% endif %}
-            {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if filtro %}&filtro={{ filtro }}{% endif %}" class="px-2.5 py-1.5 border rounded bg-white hover:bg-slate-100">Próxima</a>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}

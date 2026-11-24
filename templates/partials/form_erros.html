@@ -1,0 +1,11 @@
+{% comment %}Resumo no topo do formulário: erros gerais e um aviso que aponta os campos com erro.{% endcomment %}
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+    {% if form.non_field_errors %}
+        {% for erro in form.non_field_errors %}<p class="mb-1">{{ erro }}</p>{% endfor %}
+    {% endif %}
+    {% if form.errors|length > form.non_field_errors|length %}
+    <p class="mb-0">Revise os campos destacados abaixo.</p>
+    {% endif %}
+</div>
+{% endif %}

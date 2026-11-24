@@ -1,0 +1,9 @@
+{% with rm=request.resolver_match %}
+<li class="nav-item"><a class="nav-link{% if rm.namespace == 'dashboard' %} active{% endif %}" href="{% url 'dashboard:index' %}"{% if rm.namespace == 'dashboard' %} aria-current="page"{% endif %}><i class="bi bi-grid d-lg-none" aria-hidden="true"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link{% if rm.namespace == 'chamados' and rm.url_name != 'kanban' %} active{% endif %}" href="{% url 'chamados:chamado_list' %}"{% if rm.namespace == 'chamados' and rm.url_name != 'kanban' %} aria-current="page"{% endif %}><i class="bi bi-list-check d-lg-none" aria-hidden="true"></i> Chamados</a></li>
+<li class="nav-item"><a class="nav-link{% if rm.url_name == 'kanban' %} active{% endif %}" href="{% url 'chamados:kanban' %}"{% if rm.url_name == 'kanban' %} aria-current="page"{% endif %}><i class="bi bi-kanban d-lg-none" aria-hidden="true"></i> Kanban</a></li>
+<li class="nav-item"><a class="nav-link{% if rm.namespace == 'chat' %} active{% endif %}" href="{% url 'chat:index' %}"{% if rm.namespace == 'chat' %} aria-current="page"{% endif %}><i class="bi bi-chat-dots d-lg-none" aria-hidden="true"></i> Chat <span class="badge rounded-pill text-bg-light{% if not chat_nao_lidas_count %} d-none{% endif %}" data-contador-chat><span class="visually-hidden">Mensagens não lidas: </span><span data-contador-valor>{{ chat_nao_lidas_count }}</span></span></a></li>
+{% if user.is_admin %}
+<li class="nav-item"><a class="nav-link{% if rm.namespace == 'relatorios' %} active{% endif %}" href="{% url 'relatorios:relatorio' %}"{% if rm.namespace == 'relatorios' %} aria-current="page"{% endif %}><i class="bi bi-file-earmark-bar-graph d-lg-none" aria-hidden="true"></i> Relatórios</a></li>
+{% endif %}
+{% endwith %}

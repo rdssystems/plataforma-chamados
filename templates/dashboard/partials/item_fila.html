@@ -1,0 +1,15 @@
+{% comment %}Item da fila de trabalho: identifica a pendência, o estado e a próxima ação.{% endcomment %}
+<div class="painel-linha">
+    <div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'chamados:chamado_detail' c.pk %}" class="fw-semibold small text-decoration-none">{{ c.codigo }}</a>
+            {% include 'chamados/partials/selo_prioridade.html' with chamado=c %}
+        </div>
+        <div class="small text-truncate">{{ c.titulo }}</div>
+        <div class="small text-muted">
+            {{ c.plataforma.nome }} · {% if c.responsavel %}{{ c.responsavel.get_full_name|default:c.responsavel.username }}{% else %}Sem responsável{% endif %} ·
+            <span class="{% if critico %}atrasado{% endif %}">{% if critico %}<i class="bi bi-clock-history" aria-hidden="true"></i> {% endif %}{{ rotulo_prazo }} {{ c.prazo|date:"d/m/Y" }}</span>
+        </div>
+    </div>
+    <a href="{% url 'chamados:chamado_detail' c.pk %}" class="btn btn-sm btn-outline-primary text-nowrap" aria-label="Abrir {{ c.codigo }}">Abrir</a>
+</div>

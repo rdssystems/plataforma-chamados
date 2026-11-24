@@ -1,0 +1,16 @@
+{% with rm=request.resolver_match %}
+<div class="menu-desktop" id="menu-desktop">
+    <ul class="navbar-nav" aria-label="Navegação principal">
+        {% include 'partials/links_principais.html' %}
+        {% if user.is_admin %}
+        <li class="nav-item dropdown">
+            <button type="button" class="nav-link dropdown-toggle{% if rm.namespace == 'plataformas' or 'usuario' in rm.url_name %} active{% endif %}" data-bs-toggle="dropdown" aria-expanded="false">Configurações</button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'plataformas:plataforma_list' %}"><i class="bi bi-globe2" aria-hidden="true"></i> Plataformas</a></li>
+                <li><a class="dropdown-item" href="{% url 'accounts:usuario_list' %}"><i class="bi bi-people" aria-hidden="true"></i> Usuários</a></li>
+            </ul>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endwith %}

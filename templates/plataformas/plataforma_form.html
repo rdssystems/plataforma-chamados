@@ -1,90 +1,38 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Editar Plataforma — {{ object.nome }}{% else %}Nova Plataforma{% endif %} — Gestão de Chamados{% endblock %}
-{% block header_title %}{% if object %}Editar Plataforma{% else %}Cadastrar Plataforma{% endif %}{% endblock %}
+{% block title %}{% if object %}Editar {{ object.nome }}{% else %}Cadastrar plataforma{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
-        <div class="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <header class="cabecalho-pagina mb-4">
             <div>
-                <h3 class="text-xl font-bold text-slate-800">
-                    {% if object %}Editar {{ object.nome }}{% else %}Nova Plataforma{% endif %}
-                </h3>
-                <p class="text-sm text-slate-500 mt-1">
-                    Preencha os dados da plataforma atendida pela equipe.
-                </p>
+                <h1 class="h4 mb-1">{% if object %}Editar {{ object.nome }}{% else %}Cadastrar plataforma{% endif %}</h1>
+                <p class="mb-0">Dados do sistema, portal ou aplicativo atendido pela equipe.</p>
             </div>
-            <a href="{% url 'plataformas:plataforma_list' %}" class="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center">
-                &larr; Voltar para a lista
-            </a>
-        </div>
-
-        {% if form.errors %}
-        <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 space-y-1">
-            {% for field in form %}
-                {% for error in field.errors %}
-                    <p>• <strong>{{ field.label }}:</strong> {{ error }}</p>
-                {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                <p>• {{ error }}</p>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <form method="post" class="space-y-5">
-            {% csrf_token %}
-
-            <div>
-                <label for="{{ form.nome.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    Nome da Plataforma *
-                </label>
-                {{ form.nome }}
-            </div>
-
-            <div>
-                <label for="{{ form.descricao.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    Descrição
-                </label>
-                {{ form.descricao }}
-            </div>
-
-            <div>
-                <label for="{{ form.url.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    URL ou Domínio
-                </label>
-                {{ form.url }}
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div>
-                    <label for="{{ form.cor.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                        Cor de Identificação (Hex) *
-                    </label>
-                    <div class="flex items-center space-x-3">
-                        {{ form.cor }}
-                        <span class="text-xs text-slate-500">Usada nos cards do Kanban, badges e gráficos.</span>
+        </header>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                {% include 'partials/form_erros.html' %}
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% include 'partials/campo.html' with campo=form.nome rotulo='Nome da plataforma' %}
+                    {% include 'partials/campo.html' with campo=form.descricao %}
+                    {% include 'partials/campo.html' with campo=form.url rotulo='Endereço (URL)' %}
+                    <div class="row align-items-end">
+                        <div class="col-sm-6">
+                            {% include 'partials/campo.html' with campo=form.cor rotulo='Cor de identificação' %}
+                            <p class="form-text mt-n2 mb-3">Aparece como marcador ao lado do nome nas listas, no Kanban e nos gráficos.</p>
+                        </div>
+                        <div class="col-sm-6">{% include 'partials/campo.html' with campo=form.ativa rotulo='Plataforma ativa (aceita novos chamados)' %}</div>
                     </div>
-                </div>
-
-                <div class="pt-6 flex items-center space-x-2">
-                    {{ form.ativa }}
-                    <label for="{{ form.ativa.id_for_label }}" class="text-sm font-medium text-slate-700">
-                        Plataforma Ativa
-                    </label>
-                </div>
+                    <div class="d-flex flex-wrap justify-content-end gap-2 pt-2 border-top">
+                        <a href="{% url 'plataformas:plataforma_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Salvar plataforma</button>
+                    </div>
+                </form>
             </div>
-
-            <div class="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100">
-                <a href="{% url 'plataformas:plataforma_list' %}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
-                    Cancelar
-                </a>
-                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-semibold text-sm transition">
-                    Salvar Plataforma
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}

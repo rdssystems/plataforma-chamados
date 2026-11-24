@@ -1,0 +1,30 @@
+{% load consulta %}
+{% comment %}
+Campo de filtro (GET) que preserva a entrada e mostra o erro junto ao campo.
+Parâmetros: nome, rotulo, classes e um de:
+  tipo='busca' | tipo='date'          -> input
+  opcoes=[(valor, rótulo), ...]       -> select de escolhas
+  registros=[objetos com pk]          -> select de registros (pessoas=True usa o nome completo)
+  vazio='Rótulo da opção "todos"'
+{% endcomment %}
+{% with bruto=filtros|obter:nome erro=filtros_erros|obter:nome %}
+<div class="{{ classes }}">
+    <label for="filtro-{{ nome }}" class="form-label small mb-1">{{ rotulo }}</label>
+    {% if tipo == 'busca' or tipo == 'date' %}
+    <input type="{% if tipo == 'busca' %}search{% else %}date{% endif %}" id="filtro-{{ nome }}" name="{{ nome }}" value="{{ bruto }}"
+           class="form-control{% if erro %} is-invalid{% endif %}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+           {% if erro %}aria-invalid="true" aria-describedby="filtro-{{ nome }}-erro"{% endif %}>
+    {% else %}
+    <select id="filtro-{{ nome }}" name="{{ nome }}" class="form-select{% if erro %} is-invalid{% endif %}"
+            {% if erro %}aria-invalid="true" aria-describedby="filtro-{{ nome }}-erro"{% endif %}>
+        <option value="">{{ vazio }}</option>
+        {% if opcoes %}
+            {% for val, lab in opcoes %}<option value="{{ val }}"{% if bruto == val %} selected{% endif %}>{{ lab }}</option>{% endfor %}
+        {% else %}
+            {% for r in registros %}<option value="{{ r.pk }}"{% if bruto == r.pk|stringformat:'s' %} selected{% endif %}>{% if pessoas %}{{ r.get_full_name|default:r.username }}{% else %}{{ r }}{% endif %}</option>{% endfor %}
+        {% endif %}
+    </select>
+    {% endif %}
+    {% if erro %}<div class="invalid-feedback d-block" id="filtro-{{ nome }}-erro">{{ erro }}</div>{% endif %}
+</div>
+{% endwith %}

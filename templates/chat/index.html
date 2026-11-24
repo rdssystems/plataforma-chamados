@@ -1,82 +1,69 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Chat - Gestão de Chamados{% endblock %}
-{% block header_title %}Chat{% endblock %}
+{% block title %}Chat{% endblock %}
 
 {% block content %}
+<h1 class="visually-hidden">Chat</h1>
 <input type="hidden" id="chat-csrf" value="{{ csrf_token }}">
-<div class="flex h-[calc(100vh-7rem)] min-h-[28rem] bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+<div class="chat-quadro{% if conversa %} com-conversa{% endif %}">
 
-    <!-- Coluna da esquerda: abas Conversas / Online -->
-    <section class="{% if conversa %}hidden md:flex{% else %}flex{% endif %} w-full md:w-80 flex-col border-r border-slate-200 flex-shrink-0">
-        <div class="flex border-b border-slate-200 text-sm font-medium" role="tablist">
-            <button type="button" data-aba="conversas" role="tab"
-                    class="flex-1 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition">
-                Conversas
-            </button>
-            <button type="button" data-aba="online" role="tab"
-                    class="flex-1 py-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition">
-                Online
-                <span data-online-count-label class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] px-1.5 py-0.5 text-[11px] font-bold leading-none text-emerald-700 bg-emerald-100 rounded-full">0</span>
+    <section class="chat-lateral" aria-label="Conversas e usuários">
+        <div class="chat-abas" role="tablist">
+            <button type="button" class="chat-aba" role="tab" data-aba="conversas" aria-controls="painel-conversas" aria-selected="true">Conversas</button>
+            <button type="button" class="chat-aba" role="tab" data-aba="online" aria-controls="painel-online" aria-selected="false">
+                Online <span class="badge rounded-pill text-bg-light border" data-online-count-label>0</span>
             </button>
         </div>
-        <div data-painel="conversas" id="lista-conversas" data-ativa="{{ conversa.pk|default:'' }}" class="flex-1 overflow-y-auto p-2">
-            {% include 'chat/partials/conversas.html' with conversa_ativa_id=conversa.pk %}
-        </div>
-        <div data-painel="online" class="hidden flex-1 overflow-y-auto p-2">
-            <div data-usuarios-online>
-                <p class="px-2 py-4 text-sm text-slate-400 text-center">Carregando…</p>
+        <div class="chat-painel" id="painel-conversas" role="tabpanel" data-painel="conversas">
+            <div id="lista-conversas" data-ativa="{{ conversa.pk|default:'' }}">
+                {% include 'chat/partials/conversas.html' with conversa_ativa_id=conversa.pk %}
             </div>
+        </div>
+        <div class="chat-painel d-none" id="painel-online" role="tabpanel" data-painel="online">
+            <div data-usuarios-online><p class="small text-muted text-center py-4 mb-0">Carregando…</p></div>
         </div>
     </section>
 
-    <!-- Conversa aberta -->
-    <section class="{% if conversa %}flex{% else %}hidden md:flex{% endif %} flex-1 flex-col min-w-0">
+    <section class="chat-conversa" aria-label="Conversa">
         {% if conversa %}
-        <div class="flex items-center gap-3 px-4 h-14 border-b border-slate-200 flex-shrink-0">
-            <a href="{% url 'chat:index' %}" class="md:hidden -ml-1 p-1 text-slate-500 hover:text-slate-800" aria-label="Voltar para as conversas">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-            </a>
-            {% include 'chat/partials/avatar.html' with pessoa=outro %}
+        <div class="chat-cabecalho">
+            <a href="{% url 'chat:index' %}" class="btn btn-sm btn-outline-secondary d-md-none" aria-label="Voltar para as conversas"><i class="bi bi-arrow-left" aria-hidden="true"></i></a>
+            {% include 'partials/avatar.html' with pessoa=outro tamanho='lg' %}
             <div class="min-w-0">
-                <p class="text-sm font-semibold text-slate-800 truncate">{{ outro.get_full_name|default:outro.username }}</p>
-                <p id="status-outro" class="text-xs {% if outro_online %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                <h2 class="h6 mb-0 text-truncate">{{ outro.get_full_name|default:outro.username }}</h2>
+                <p id="status-outro" class="small mb-0 {% if outro_online %}text-success{% else %}text-muted{% endif %}">
                     {% if not outro.is_active %}Usuário desativado{% elif outro_online %}Online{% else %}Offline{% endif %}
                 </p>
             </div>
         </div>
 
-        <div id="mensagens" class="flex-1 overflow-y-auto px-4 py-4 space-y-1.5 bg-slate-50" aria-live="polite">
-            <div id="carregar-anteriores" class="hidden text-center pb-2">
-                <button type="button" class="text-xs font-medium text-blue-600 hover:text-blue-800 px-3 py-1 rounded-full bg-white border border-slate-200">
-                    Carregar mensagens anteriores
-                </button>
+        <div id="mensagens" class="chat-mensagens" aria-live="polite">
+            <div id="carregar-anteriores" class="d-none text-center mb-2">
+                <button type="button" class="btn btn-sm btn-outline-primary">Carregar mensagens anteriores</button>
             </div>
         </div>
 
         {% if pode_enviar %}
-        <form id="form-mensagem" method="post" action="{% url 'chat:enviar' conversa.pk %}" class="border-t border-slate-200 p-3 flex-shrink-0">
+        <form id="form-mensagem" method="post" action="{% url 'chat:enviar' conversa.pk %}" class="chat-envio">
             {% csrf_token %}
-            <div class="flex gap-2 items-end">
-                <textarea name="texto" rows="1" maxlength="4000" required
-                          placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)"
-                          class="flex-1 resize-none max-h-40 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
-                    Enviar
-                </button>
+            <label for="campo-mensagem" class="visually-hidden">Mensagem para {{ outro.get_full_name|default:outro.username }}</label>
+            <div class="d-flex gap-2 align-items-end">
+                <textarea id="campo-mensagem" name="texto" rows="1" maxlength="4000" required class="form-control"
+                          placeholder="Escreva uma mensagem… (Enter envia, Shift+Enter quebra linha)" aria-describedby="erro-envio"></textarea>
+                <button type="submit" class="btn btn-primary flex-shrink-0 text-nowrap"><i class="bi bi-send" aria-hidden="true"></i> Enviar</button>
             </div>
-            <p id="erro-envio" class="hidden mt-1.5 text-xs text-red-600"></p>
+            <p id="erro-envio" class="d-none small text-danger mt-2 mb-0" role="alert"></p>
         </form>
         {% else %}
-        <div class="border-t border-slate-200 p-3 text-sm text-slate-500 bg-slate-50 flex-shrink-0">
-            Este usuário está desativado. O histórico continua disponível, mas não é possível enviar novas mensagens.
+        <div class="chat-envio small text-muted bg-light">
+            <i class="bi bi-person-slash" aria-hidden="true"></i> Este usuário está desativado. O histórico continua disponível, mas não é possível enviar novas mensagens.
         </div>
         {% endif %}
         {% else %}
-        <div class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400">
-            <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-            <p class="text-sm">Selecione uma conversa ou abra a aba <strong class="text-slate-500">Online</strong> para começar.</p>
+        <div class="d-flex flex-column flex-grow-1 align-items-center justify-content-center text-center p-4 text-muted">
+            <i class="bi bi-chat-dots fs-1 mb-2" aria-hidden="true"></i>
+            <p class="mb-0">Selecione uma conversa ou abra a aba <strong>Online</strong> para começar.</p>
         </div>
         {% endif %}
     </section>
@@ -85,5 +72,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/chat.js' %}" defer></script>
+<script src="{% static 'js/chat.js' %}?v=20261124-1" defer></script>
 {% endblock %}

@@ -1,8 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Dashboard — Gestão de Chamados{% endblock %}
-{% block header_title %}Dashboard Operacional{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
 {% block extra_head %}
 <!-- Apache ECharts (versão fixa + verificação de integridade) e tradução pt-BR -->
@@ -15,198 +14,217 @@
 {% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Top Filter & Salutation Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-            <h3 class="text-xl font-bold text-slate-800">
-                Olá, {{ user.get_full_name|default:user.username }}!
-            </h3>
-            <p class="text-xs text-slate-500 mt-0.5">
-                {% if user.is_admin %}
-                    Visão geral de desempenho da equipe e prazos de entrega.
-                {% else %}
-                    Acompanhamento das suas demandas atribuídas e pendentes.
-                {% endif %}
-            </p>
+<div id="painel">
+    <header class="cabecalho-pagina d-block mb-4">
+        <div class="d-flex align-items-start gap-3">
+            <span class="cabecalho-avatar" aria-hidden="true">{{ user.first_name|default:user.username|slice:":1"|upper }}</span>
+            <div class="flex-grow-1">
+                <p class="cabecalho-sobretitulo mb-2">Dashboard · {{ hoje|date:"l, d/m/Y" }}</p>
+                <h1 class="h4 mb-2">Olá, {{ user.first_name|default:user.username }}</h1>
+                <p class="mb-0">
+                    {% if user.is_admin %}
+                        Acompanhe as demandas {% if dev_filtrado %}de <strong>{{ dev_filtrado.get_full_name|default:dev_filtrado.username }}</strong>{% else %}de toda a equipe{% endif %} e os prazos de entrega.
+                    {% else %}
+                        Acompanhe as demandas atribuídas a você e as que você abriu.
+                    {% endif %}
+                </p>
+            </div>
         </div>
-
-        {% if user.is_admin %}
-        <form method="get" class="flex items-center space-x-2">
-            <label for="dev-filter" class="text-xs font-semibold text-slate-600">Filtrar por Dev:</label>
-            <select id="dev-filter" name="dev" onchange="this.form.submit()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
-                <option value="">Toda a Equipe</option>
-                {% for d in devs %}
-                <option value="{{ d.id }}" {% if dev_selecionado == d.id|stringformat:"s" %}selected{% endif %}>
-                    {{ d.get_full_name|default:d.username }}
-                </option>
-                {% endfor %}
-            </select>
-            {% if dev_selecionado %}
-            <a href="{% url 'dashboard:index' %}" class="text-xs text-red-600 hover:underline">Limpar</a>
+        <div class="d-flex flex-wrap gap-2 mt-4" aria-label="Ações rápidas">
+            <a href="{% url 'chamados:chamado_create' %}" class="btn btn-light"><i class="bi bi-plus-lg" aria-hidden="true"></i> Abrir chamado</a>
+            <a href="{% url 'chamados:kanban' %}{% if dev_filtrado %}?responsavel={{ dev_filtrado.pk }}{% endif %}" class="btn btn-outline-light"><i class="bi bi-kanban" aria-hidden="true"></i> Ver Kanban</a>
+            {% if user.is_admin %}
+            <a href="{% url 'relatorios:relatorio' %}{% if dev_filtrado %}?dev={{ dev_filtrado.pk }}{% endif %}" class="btn btn-outline-light"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> Ver relatórios</a>
             {% endif %}
-        </form>
-        {% endif %}
-    </div>
-
-    <!-- Cards de Indicadores (Topo) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-{{ user.is_admin|yesno:'5,4' }} gap-4">
-        <!-- Abertos -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Abertos</p>
-                <p class="text-2xl font-black text-slate-800 mt-1">{{ cards.total_abertos|default:0 }}</p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
-                ★
-            </div>
         </div>
+    </header>
 
-        <!-- Em Andamento -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Em Andamento</p>
-                <p class="text-2xl font-black text-blue-600 mt-1">{{ cards.total_em_andamento|default:0 }}</p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
-                &rarr;
-            </div>
-        </div>
+    <div class="painel-layout">
+        <aside class="painel-lateral d-none d-xl-block">
+            <nav class="painel-indice card shadow-sm" aria-label="Seções do painel">
+                <p class="painel-indice-titulo mb-2">Neste painel</p>
+                {% if filtros_validos %}<a href="#indicadores"><i class="bi bi-grid" aria-hidden="true"></i> Visão geral</a>{% endif %}
+                {% if user.is_admin %}<a href="#filtros"><i class="bi bi-funnel" aria-hidden="true"></i> Recorte</a>{% endif %}
+                {% if filtros_validos %}
+                <a href="#fila"><i class="bi bi-exclamation-diamond" aria-hidden="true"></i> Fila de trabalho</a>
+                <a href="#analise"><i class="bi bi-graph-up" aria-hidden="true"></i> Análise</a>
+                <a href="#atividades"><i class="bi bi-activity" aria-hidden="true"></i> Atividades</a>
+                {% endif %}
+            </nav>
+        </aside>
 
-        <!-- Atrasados (Destaque Vermelho) -->
-        <div class="bg-red-50 p-5 rounded-xl border-2 border-red-300 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-red-700">Atrasados</p>
-                <p class="text-2xl font-black text-red-800 mt-1">{{ cards.total_atrasados|default:0 }}</p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-red-200 text-red-800 flex items-center justify-center font-bold text-lg">
-                !
-            </div>
-        </div>
-
-        <!-- Concluídos no Mês -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Concluídos no Mês</p>
-                <p class="text-2xl font-black text-emerald-600 mt-1">{{ cards.total_concluidos_mes|default:0 }}</p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
-                &check;
-            </div>
-        </div>
-
-        {% if user.is_admin %}
-        <!-- Card Sem Responsável (apenas Admin) -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Sem Responsável</p>
-                <p class="text-2xl font-black text-purple-600 mt-1">{{ cards.total_sem_responsavel|default:0 }}</p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-lg">
-                ?
-            </div>
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Gráficos (Apache ECharts, desenhados por static/js/dashboard_graficos.js) -->
-    <div id="dashboard-graficos" class="grid grid-cols-1 lg:grid-cols-2 gap-6"
-         data-url="{% url 'dashboard:dados_graficos' %}{% if dev_selecionado %}?dev={{ dev_selecionado|urlencode }}{% endif %}">
-        {% include 'dashboard/partials/grafico_card.html' with tipo='linha' titulo='Chamados abertos × concluídos por semana' subtitulo='Últimas 12 semanas' recorte=recorte_dev %}
-        {% include 'dashboard/partials/grafico_card.html' with tipo='plataformas' titulo='Chamados ativos por plataforma' subtitulo='Da plataforma com mais chamados para a com menos' recorte=recorte_dev %}
-        {% if user.is_admin %}
-        {% if recorte_dev %}{% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' recorte='equipe inteira, sem o filtro de dev' %}{% else %}{% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' %}{% endif %}
-        {% endif %}
-        {% include 'dashboard/partials/grafico_card.html' with tipo='prioridades' titulo='Chamados ativos por prioridade' subtitulo='' recorte=recorte_dev classes=user.is_admin|yesno:',lg:col-span-2' %}
-    </div>
-
-    <!-- Listas Rápidas do Dashboard -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- 1. Atrasados -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            <div class="p-4 bg-red-50 border-b border-red-100 flex items-center justify-between">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-red-800 flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Atrasados Críticos
-                </h4>
-                <span class="text-xs font-bold text-red-700">{{ chamados_atrasados|length }}</span>
-            </div>
-            <div class="divide-y divide-slate-100 flex-1">
-                {% for c in chamados_atrasados %}
-                <div class="p-3 hover:bg-slate-50 transition text-xs">
-                    <div class="flex items-center justify-between">
-                        <a href="{% url 'chamados:chamado_detail' c.pk %}" class="font-bold text-blue-600 hover:underline">{{ c.codigo }}</a>
-                        <span class="font-bold text-red-600">{{ c.prazo|date:"d/m/Y" }}</span>
+        <div class="painel-conteudo">
+            {% if filtros_validos %}
+            <section class="mb-4" id="indicadores" aria-labelledby="titulo-indicadores">
+                <h2 class="visually-hidden" id="titulo-indicadores">Visão geral</h2>
+                <div class="row g-3">
+                    {% with resp=dev_filtrado.pk|default_if_none:'' %}
+                    <div class="col-6 col-xl-3">
+                        <a href="{% url 'chamados:chamado_list' %}?situacao=abertos{% if resp %}&amp;responsavel={{ resp }}{% endif %}" class="indicador card shadow-sm text-decoration-none painel-indicador">
+                            <i class="bi bi-inbox painel-indicador-icone" aria-hidden="true"></i>
+                            <span class="indicador-rotulo">Abertos</span>
+                            <span class="indicador-valor">{{ cards.total_abertos }} <span class="indicador-unidade">chamado{{ cards.total_abertos|pluralize }}</span></span>
+                            <span class="indicador-detalhe">Aguardando início · ver lista <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                        </a>
                     </div>
-                    <p class="text-slate-800 font-medium truncate mt-0.5">{{ c.titulo }}</p>
-                    <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                        <span>{{ c.plataforma.nome }}</span>
-                        <span>{{ c.responsavel.username|default:"Sem dev" }}</span>
+                    <div class="col-6 col-xl-3">
+                        <a href="{% url 'chamados:chamado_list' %}?situacao=em_andamento{% if resp %}&amp;responsavel={{ resp }}{% endif %}" class="indicador card shadow-sm text-decoration-none painel-indicador">
+                            <i class="bi bi-arrow-repeat painel-indicador-icone" aria-hidden="true"></i>
+                            <span class="indicador-rotulo">Em andamento</span>
+                            <span class="indicador-valor">{{ cards.total_em_andamento }} <span class="indicador-unidade">chamado{{ cards.total_em_andamento|pluralize }}</span></span>
+                            <span class="indicador-detalhe">Inclui em revisão · ver lista <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                        <a href="{% url 'chamados:chamado_list' %}?situacao=atrasados{% if resp %}&amp;responsavel={{ resp }}{% endif %}" class="indicador card shadow-sm text-decoration-none painel-indicador painel-indicador-critico">
+                            <i class="bi bi-exclamation-octagon painel-indicador-icone" aria-hidden="true"></i>
+                            <span class="indicador-rotulo">Atrasados</span>
+                            <span class="indicador-valor">{{ cards.total_atrasados }} <span class="indicador-unidade">chamado{{ cards.total_atrasados|pluralize }}</span></span>
+                            <span class="indicador-detalhe">Prazo vencido · ver lista <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-xl-3">
+                        <a href="{% url 'chamados:chamado_list' %}?situacao=concluidos_mes{% if resp %}&amp;responsavel={{ resp }}{% endif %}" class="indicador card shadow-sm text-decoration-none painel-indicador painel-indicador-sucesso">
+                            <i class="bi bi-check2-circle painel-indicador-icone" aria-hidden="true"></i>
+                            <span class="indicador-rotulo">Concluídos no mês</span>
+                            <span class="indicador-valor">{{ cards.total_concluidos_mes }} <span class="indicador-unidade">chamado{{ cards.total_concluidos_mes|pluralize }}</span></span>
+                            <span class="indicador-detalhe">Desde {{ hoje|date:"01/m" }} · ver lista <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                        </a>
+                    </div>
+                    {% if user.is_admin %}
+                    <div class="col-6 col-xl-3">
+                        <a href="{% url 'chamados:chamado_list' %}?situacao=sem_responsavel{% if resp %}&amp;responsavel={{ resp }}{% endif %}" class="indicador card shadow-sm text-decoration-none painel-indicador painel-indicador-atencao">
+                            <i class="bi bi-person-exclamation painel-indicador-icone" aria-hidden="true"></i>
+                            <span class="indicador-rotulo">Sem responsável</span>
+                            <span class="indicador-valor">{{ cards.total_sem_responsavel }} <span class="indicador-unidade">chamado{{ cards.total_sem_responsavel|pluralize }}</span></span>
+                            <span class="indicador-detalhe">Aguardando atribuição · ver lista <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% if user.is_admin %}
+            <section class="filtros-pagina mb-4" id="filtros" aria-labelledby="titulo-filtros">
+                <h2 class="h6 mb-3" id="titulo-filtros">Recorte do painel</h2>
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-sm-8 col-md-6">
+                        <label for="filtro-dev" class="form-label small">Desenvolvedor</label>
+                        <select id="filtro-dev" name="dev" class="form-select{% if filtros_erros.dev %} is-invalid{% endif %}"
+                                {% if filtros_erros.dev %}aria-invalid="true" aria-describedby="filtro-dev-erro"{% endif %}>
+                            <option value="">Toda a equipe</option>
+                            {% for d in devs %}
+                            <option value="{{ d.pk }}"{% if dev_selecionado == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.get_full_name|default:d.username }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if filtros_erros.dev %}<div class="invalid-feedback d-block" id="filtro-dev-erro">{{ filtros_erros.dev }}</div>{% endif %}
+                    </div>
+                    <div class="col-auto d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Aplicar</button>
+                        {% if dev_selecionado %}<a href="{% url 'dashboard:index' %}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
+                    </div>
+                </form>
+                <p class="small text-muted mt-2 mb-0">
+                    {% if dev_filtrado %}Indicadores, fila e gráficos mostram somente os chamados de <strong>{{ dev_filtrado.get_full_name|default:dev_filtrado.username }}</strong>.{% else %}Indicadores, fila e gráficos mostram toda a equipe.{% endif %}
+                </p>
+            </section>
+            {% endif %}
+
+            {% if not filtros_validos %}
+            <div class="alert alert-warning" role="status">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                Corrija o recorte acima para ver os indicadores, a fila de trabalho e os gráficos.
+            </div>
+            {% else %}
+
+            <section class="row g-3 mb-4" id="fila" aria-labelledby="titulo-fila">
+                <h2 class="visually-hidden" id="titulo-fila">Fila de trabalho</h2>
+                <div class="col-xl-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <h3 class="h6 mb-1"><i class="bi bi-exclamation-octagon text-danger" aria-hidden="true"></i> Atrasados</h3>
+                                {% if cards.total_atrasados > chamados_atrasados|length %}
+                                <a href="{% url 'chamados:chamado_list' %}?situacao=atrasados{% if dev_filtrado %}&amp;responsavel={{ dev_filtrado.pk }}{% endif %}" class="small">Ver todos os {{ cards.total_atrasados }}</a>
+                                {% endif %}
+                            </div>
+                            <p class="small text-muted mb-2">Prazo vencido, do mais antigo para o mais recente.</p>
+                            {% for c in chamados_atrasados %}
+                            {% include 'dashboard/partials/item_fila.html' with c=c rotulo_prazo='Venceu em' critico=True %}
+                            {% empty %}
+                            <p class="small mb-0 pt-2 border-top"><i class="bi bi-check-circle text-success" aria-hidden="true"></i> Nenhum chamado atrasado.</p>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
-                {% empty %}
-                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhum chamado atrasado!</p>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- 2. Vencendo nos próximos 3 dias -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            <div class="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Vencendo em Breve (3 dias)
-                </h4>
-                <span class="text-xs font-bold text-amber-700">{{ chamados_vencendo|length }}</span>
-            </div>
-            <div class="divide-y divide-slate-100 flex-1">
-                {% for c in chamados_vencendo %}
-                <div class="p-3 hover:bg-slate-50 transition text-xs">
-                    <div class="flex items-center justify-between">
-                        <a href="{% url 'chamados:chamado_detail' c.pk %}" class="font-bold text-blue-600 hover:underline">{{ c.codigo }}</a>
-                        <span class="font-semibold text-amber-600">{{ c.prazo|date:"d/m/Y" }}</span>
-                    </div>
-                    <p class="text-slate-800 font-medium truncate mt-0.5">{{ c.titulo }}</p>
-                    <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                        <span>{{ c.plataforma.nome }}</span>
-                        <span>{{ c.responsavel.username|default:"Sem dev" }}</span>
+                <div class="col-xl-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h3 class="h6 mb-1"><i class="bi bi-hourglass-split text-primary" aria-hidden="true"></i> Vencem em até 3 dias</h3>
+                            <p class="small text-muted mb-2">Prazo entre hoje e os próximos 3 dias.</p>
+                            {% for c in chamados_vencendo %}
+                            {% include 'dashboard/partials/item_fila.html' with c=c rotulo_prazo='Vence em' critico=False %}
+                            {% empty %}
+                            <p class="small mb-0 pt-2 border-top"><i class="bi bi-check-circle text-success" aria-hidden="true"></i> Nenhum chamado vencendo nos próximos 3 dias.</p>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
-                {% empty %}
-                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhum chamado vencendo nos próximos 3 dias.</p>
-                {% endfor %}
-            </div>
-        </div>
+            </section>
 
-        <!-- 3. Últimas 10 Atividades -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Últimas Atividades
-                </h4>
-            </div>
-            <div class="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[300px]">
-                {% for ativ in ultimas_atividades %}
-                <div class="p-3 hover:bg-slate-50 transition text-xs">
-                    <div class="flex items-center justify-between">
-                        <span class="font-semibold text-slate-800">{{ ativ.alterado_por.username }}</span>
-                        <span class="text-[10px] text-slate-400">{{ ativ.alterado_em|date:"d/m H:i" }}</span>
+            <section class="mb-4" id="analise" aria-labelledby="titulo-analise">
+                <h2 class="h5 mb-3" id="titulo-analise">Análise</h2>
+                <div id="dashboard-graficos" class="row g-3"
+                     data-url="{% url 'dashboard:dados_graficos' %}{% if dev_filtrado %}?dev={{ dev_filtrado.pk }}{% endif %}">
+                    <div class="col-lg-6">
+                        {% include 'dashboard/partials/grafico_card.html' with tipo='linha' titulo='Chamados abertos × concluídos por semana' subtitulo='Últimas 12 semanas' recorte=recorte_dev %}
                     </div>
-                    <p class="text-slate-600 mt-0.5">
-                        <a href="{% url 'chamados:chamado_detail' ativ.chamado.pk %}" class="text-blue-600 font-bold hover:underline">{{ ativ.chamado.codigo }}</a>
-                        mudou para <span class="font-medium text-slate-800">{{ ativ.get_para_status_display }}</span>
-                    </p>
+                    <div class="col-lg-6">
+                        {% include 'dashboard/partials/grafico_card.html' with tipo='plataformas' titulo='Chamados ativos por plataforma' subtitulo='Situação atual, da maior para a menor' recorte=recorte_dev %}
+                    </div>
+                    {% if user.is_admin %}
+                    <div class="col-lg-6">
+                        {% if recorte_dev %}
+                        {% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' recorte='equipe inteira, sem o recorte de dev' %}
+                        {% else %}
+                        {% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="{% if user.is_admin %}col-lg-6{% else %}col-12{% endif %}">
+                        {% include 'dashboard/partials/grafico_card.html' with tipo='prioridades' titulo='Chamados ativos por prioridade' subtitulo='Situação atual' recorte=recorte_dev %}
+                    </div>
                 </div>
-                {% empty %}
-                <p class="p-6 text-center text-xs text-slate-400 italic">Nenhuma atividade recente.</p>
-                {% endfor %}
-            </div>
+            </section>
+
+            <section class="card shadow-sm mb-4" id="atividades" aria-labelledby="titulo-atividades">
+                <div class="card-body">
+                    <h2 class="h6 mb-1" id="titulo-atividades"><i class="bi bi-activity text-primary" aria-hidden="true"></i> Últimas atividades</h2>
+                    <p class="small text-muted mb-2">As 10 mudanças de status mais recentes{% if dev_filtrado %} nos chamados de {{ dev_filtrado.get_full_name|default:dev_filtrado.username }}{% endif %}.</p>
+                    <div class="painel-lista">
+                        {% for ativ in ultimas_atividades %}
+                        <div class="painel-linha">
+                            <div>
+                                <a href="{% url 'chamados:chamado_detail' ativ.chamado.pk %}" class="fw-semibold small text-decoration-none">{{ ativ.chamado.codigo }}</a>
+                                <span class="small">foi para <strong>{{ ativ.get_para_status_display }}</strong></span>
+                                <div class="small text-muted">por {{ ativ.alterado_por.get_full_name|default:ativ.alterado_por.username }}</div>
+                            </div>
+                            <span class="small text-muted text-nowrap">{{ ativ.alterado_em|date:"d/m H:i" }}</span>
+                        </div>
+                        {% empty %}
+                        <p class="small text-muted mb-0 pt-2 border-top">Nenhuma mudança de status registrada ainda.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/dashboard_graficos.js' %}" defer></script>
+<script src="{% static 'js/dashboard_graficos.js' %}?v=20261124-1" defer></script>
 {% endblock %}

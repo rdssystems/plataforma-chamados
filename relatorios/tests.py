@@ -145,7 +145,7 @@ class TestRelatoriosExportacaoEViews:
         client.login(username='admin_relat', password='password123')
         res = client.get(reverse('relatorios:relatorio'))
         assert res.status_code == 200
-        assert 'Relatório de Entregas e Desempenho' in res.content.decode()
+        assert 'Relatório de entregas e desempenho' in res.content.decode()
 
     def test_exportacao_excel(self, client, setup_dados_conhecidos):
         client.login(username='admin_relat', password='password123')

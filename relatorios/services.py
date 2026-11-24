@@ -92,11 +92,11 @@ def calcular_metricas_relatorio(data_inicio, data_fim, dev_id=None, plataforma_i
 
     # 4. Entregues no prazo (% dos concluídos com concluido_em.date() <= prazo, apenas com prazo)
     concluidos_com_prazo = [c for c in concluidos_qs if c.prazo is not None and c.concluido_em is not None]
+    no_prazo_count = sum(1 for c in concluidos_com_prazo if c.concluido_em.date() <= c.prazo)
     if concluidos_com_prazo:
-        no_prazo_count = sum(1 for c in concluidos_com_prazo if c.concluido_em.date() <= c.prazo)
         taxa_no_prazo = round((no_prazo_count / len(concluidos_com_prazo)) * 100, 1)
     else:
-        taxa_no_prazo = 0.0
+        taxa_no_prazo = 0.0  # Sem base de cálculo: a tela mostra "—" usando prazo_denominador.
 
     # 5. Atrasados no fim do período (prazo < fim do período e não concluídos até ele)
     atrasados_fim_periodo = qs_base.filter(
@@ -183,6 +183,8 @@ def calcular_metricas_relatorio(data_inicio, data_fim, dev_id=None, plataforma_i
         'total_concluidos': total_concluidos,
         'tempo_medio': tempo_medio,
         'taxa_no_prazo': taxa_no_prazo,
+        'prazo_numerador': no_prazo_count,
+        'prazo_denominador': len(concluidos_com_prazo),
         'atrasados_fim_periodo': atrasados_fim_periodo,
         'backlog': backlog,
         'quebra_devs': quebra_devs,

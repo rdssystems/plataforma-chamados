@@ -8,11 +8,28 @@ from django.db.models import Q
 from django.http import HttpResponse, FileResponse
 
 from accounts.mixins import AdminRequiredMixin
+from config.filtros import Filtros
 from plataformas.models import Plataforma
+from .consultas import SITUACOES, q_situacao
 from .models import Chamado, MudancaStatus, Comentario, Anexo
 from .forms import ChamadoForm, MudarStatusForm, ComentarioForm, AnexoForm
 from .services import mudar_status
 from notificacoes.services import notificar_comentario, notificar_atribuicao
+
+
+def _escopo_usuario(user):
+    if getattr(user, 'is_admin', False):
+        return Chamado.objects.all()
+    return Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
+
+
+def _url_sem(request, *nomes):
+    """URL da consulta atual sem os parâmetros indicados (e sempre voltando à página 1)."""
+    params = request.GET.copy()
+    for nome in nomes + ('page',):
+        params.pop(nome, None)
+    consulta = params.urlencode()
+    return request.path + (f'?{consulta}' if consulta else '')
 
 
 class ChamadoListView(LoginRequiredMixin, ListView):
@@ -21,66 +38,87 @@ class ChamadoListView(LoginRequiredMixin, ListView):
     context_object_name = 'chamados'
     paginate_by = 15
 
+    def _ler_filtros(self):
+        if hasattr(self, 'filtros'):
+            return
+        from django.contrib.auth import get_user_model
+        Usuario = get_user_model()
+        self.plataformas = list(Plataforma.objects.filter(ativa=True).order_by('nome'))
+        self.responsaveis = list(Usuario.objects.filter(is_active=True).order_by('first_name', 'username'))
+        f = Filtros(self.request.GET)
+        self.valores = {
+            'q': f.texto('q'),
+            'situacao': f.opcao('situacao', SITUACOES, 'Selecione uma situação da lista.'),
+            'status': f.opcao('status', Chamado.STATUS_CHOICES, 'Selecione um status da lista.'),
+            'prioridade': f.opcao('prioridade', Chamado.PRIORIDADE_CHOICES, 'Selecione uma prioridade da lista.'),
+            'tipo': f.opcao('tipo', Chamado.TIPO_CHOICES, 'Selecione um tipo da lista.'),
+            'plataforma': f.id_entre('plataforma', [p.pk for p in self.plataformas], 'Selecione uma plataforma da lista.'),
+            'responsavel': f.id_entre('responsavel', [u.pk for u in self.responsaveis], 'Selecione um responsável da lista.'),
+            'data_inicio': f.data('data_inicio'),
+            'data_fim': f.data('data_fim'),
+        }
+        f.periodo(self.valores['data_inicio'], self.valores['data_fim'])
+        self.filtros = f
+
     def get_queryset(self):
-        user = self.request.user
-        if getattr(user, 'is_admin', False):
-            qs = Chamado.objects.all()
-        else:
-            qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
-
-        qs = qs.select_related('plataforma', 'responsavel', 'criado_por')
-
-        # Filtros
-        q = self.request.GET.get('q', '').strip()
-        status = self.request.GET.get('status', '').strip()
-        prioridade = self.request.GET.get('prioridade', '').strip()
-        tipo = self.request.GET.get('tipo', '').strip()
-        plataforma_id = self.request.GET.get('plataforma', '').strip()
-        responsavel_id = self.request.GET.get('responsavel', '').strip()
-        data_inicio = self.request.GET.get('data_inicio', '').strip()
-        data_fim = self.request.GET.get('data_fim', '').strip()
-
-        if q:
-            qs = qs.filter(Q(codigo__icontains=q) | Q(titulo__icontains=q))
-        if status:
-            qs = qs.filter(status=status)
-        if prioridade:
-            qs = qs.filter(prioridade=prioridade)
-        if tipo:
-            qs = qs.filter(tipo=tipo)
-        if plataforma_id:
-            qs = qs.filter(plataforma_id=plataforma_id)
-        if responsavel_id:
-            qs = qs.filter(responsavel_id=responsavel_id)
-        if data_inicio:
-            qs = qs.filter(criado_em__date__gte=data_inicio)
-        if data_fim:
-            qs = qs.filter(criado_em__date__lte=data_fim)
-
+        self._ler_filtros()
+        # Filtro inválido: nenhum resultado até a correção (as entradas são preservadas no formulário).
+        if not self.filtros.validos:
+            return Chamado.objects.none()
+        v = self.valores
+        qs = _escopo_usuario(self.request.user).select_related('plataforma', 'responsavel', 'criado_por')
+        if v['q']:
+            qs = qs.filter(Q(codigo__icontains=v['q']) | Q(titulo__icontains=v['q']))
+        if v['situacao']:
+            qs = qs.filter(q_situacao(v['situacao']))
+        for campo in ('status', 'prioridade', 'tipo'):
+            if v[campo]:
+                qs = qs.filter(**{campo: v[campo]})
+        if v['plataforma']:
+            qs = qs.filter(plataforma_id=v['plataforma'])
+        if v['responsavel']:
+            qs = qs.filter(responsavel_id=v['responsavel'])
+        if v['data_inicio']:
+            qs = qs.filter(criado_em__date__gte=v['data_inicio'])
+        if v['data_fim']:
+            qs = qs.filter(criado_em__date__lte=v['data_fim'])
         return qs.order_by('-criado_em')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.contrib.auth import get_user_model
-        Usuario = get_user_model()
-
-        context['plataformas'] = Plataforma.objects.filter(ativa=True)
-        context['responsaveis'] = Usuario.objects.filter(is_active=True).order_by('first_name', 'username')
-        context['status_choices'] = Chamado.STATUS_CHOICES
-        context['prioridade_choices'] = Chamado.PRIORIDADE_CHOICES
-        context['tipo_choices'] = Chamado.TIPO_CHOICES
-
-        # Preservar filtros atuais
-        context['filtros'] = {
-            'q': self.request.GET.get('q', ''),
-            'status': self.request.GET.get('status', ''),
-            'prioridade': self.request.GET.get('prioridade', ''),
-            'tipo': self.request.GET.get('tipo', ''),
-            'plataforma': self.request.GET.get('plataforma', ''),
-            'responsavel': self.request.GET.get('responsavel', ''),
-            'data_inicio': self.request.GET.get('data_inicio', ''),
-            'data_fim': self.request.GET.get('data_fim', ''),
+        f, v = self.filtros, self.valores
+        rotulos = {
+            'situacao': dict(SITUACOES), 'status': dict(Chamado.STATUS_CHOICES),
+            'prioridade': dict(Chamado.PRIORIDADE_CHOICES), 'tipo': dict(Chamado.TIPO_CHOICES),
+            'plataforma': {p.pk: p.nome for p in self.plataformas},
+            'responsavel': {u.pk: (u.get_full_name() or u.username) for u in self.responsaveis},
         }
+        ativos = []
+        if v['q']:
+            ativos.append({'rotulo': f'Busca: “{v["q"]}”', 'remover': _url_sem(self.request, 'q')})
+        nomes = {'situacao': 'Situação', 'status': 'Status', 'prioridade': 'Prioridade', 'tipo': 'Tipo',
+                 'plataforma': 'Plataforma', 'responsavel': 'Responsável'}
+        for chave, nome in nomes.items():
+            if v[chave]:
+                ativos.append({'rotulo': f'{nome}: {rotulos[chave][v[chave]]}', 'remover': _url_sem(self.request, chave)})
+        if v['data_inicio'] or v['data_fim']:
+            de = v['data_inicio'].strftime('%d/%m/%Y') if v['data_inicio'] else '…'
+            ate = v['data_fim'].strftime('%d/%m/%Y') if v['data_fim'] else '…'
+            ativos.append({'rotulo': f'Criados de {de} a {ate}', 'remover': _url_sem(self.request, 'data_inicio', 'data_fim')})
+
+        context.update({
+            'plataformas': self.plataformas,
+            'responsaveis': self.responsaveis,
+            'situacoes': SITUACOES,
+            'status_choices': Chamado.STATUS_CHOICES,
+            'prioridade_choices': Chamado.PRIORIDADE_CHOICES,
+            'tipo_choices': Chamado.TIPO_CHOICES,
+            'filtros': f.brutos,          # entradas preservadas, mesmo inválidas
+            'filtros_erros': f.erros,
+            'filtros_validos': f.validos,
+            'filtros_ativos': [] if not f.validos else ativos,
+            'total': context['paginator'].count if context.get('paginator') else len(context['chamados']),
+        })
         return context
 
 
@@ -108,25 +146,25 @@ class ChamadoDetailView(LoginRequiredMixin, DetailView):
         acoes_possiveis = []
         if chamado.status == Chamado.STATUS_ABERTO:
             if (is_admin or is_resp) and chamado.responsavel:
-                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Iniciar Atendimento', 'cor': 'blue', 'requer_comentario': False})
+                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Iniciar atendimento', 'cor': 'blue', 'requer_comentario': False})
             if is_admin:
-                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar Chamado', 'cor': 'red', 'requer_comentario': True})
+                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar chamado', 'cor': 'red', 'requer_comentario': True})
 
         elif chamado.status == Chamado.STATUS_EM_ANDAMENTO:
             if is_admin or is_resp:
-                acoes_possiveis.append({'status': Chamado.STATUS_EM_REVISAO, 'label': 'Enviar para Revisão', 'cor': 'amber', 'requer_comentario': False})
+                acoes_possiveis.append({'status': Chamado.STATUS_EM_REVISAO, 'label': 'Enviar para revisão', 'cor': 'amber', 'requer_comentario': False})
             if is_admin:
-                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar Chamado', 'cor': 'red', 'requer_comentario': True})
+                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar chamado', 'cor': 'red', 'requer_comentario': True})
 
         elif chamado.status == Chamado.STATUS_EM_REVISAO:
             if is_admin:
-                acoes_possiveis.append({'status': Chamado.STATUS_CONCLUIDO, 'label': 'Aprovar e Concluir', 'cor': 'emerald', 'requer_comentario': False})
-                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Devolver para Andamento', 'cor': 'amber', 'requer_comentario': True})
-                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar Chamado', 'cor': 'red', 'requer_comentario': True})
+                acoes_possiveis.append({'status': Chamado.STATUS_CONCLUIDO, 'label': 'Aprovar e concluir', 'cor': 'emerald', 'requer_comentario': False})
+                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Devolver para andamento', 'cor': 'amber', 'requer_comentario': True})
+                acoes_possiveis.append({'status': Chamado.STATUS_CANCELADO, 'label': 'Cancelar chamado', 'cor': 'red', 'requer_comentario': True})
 
         elif chamado.status == Chamado.STATUS_CONCLUIDO:
             if is_admin:
-                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Reabrir Chamado', 'cor': 'purple', 'requer_comentario': True})
+                acoes_possiveis.append({'status': Chamado.STATUS_EM_ANDAMENTO, 'label': 'Reabrir chamado', 'cor': 'purple', 'requer_comentario': True})
 
         context['acoes_possiveis'] = acoes_possiveis
 
@@ -336,45 +374,49 @@ class ChamadoKanbanView(LoginRequiredMixin, ListView):
     template_name = 'chamados/kanban.html'
     context_object_name = 'chamados'
 
+    COLUNAS = [
+        (Chamado.STATUS_ABERTO, 'Aberto'),
+        (Chamado.STATUS_EM_ANDAMENTO, 'Em andamento'),
+        (Chamado.STATUS_EM_REVISAO, 'Em revisão'),
+        (Chamado.STATUS_CONCLUIDO, 'Concluído'),
+        (Chamado.STATUS_CANCELADO, 'Cancelado'),
+    ]
+
     def get_queryset(self):
-        user = self.request.user
-        if getattr(user, 'is_admin', False):
-            qs = Chamado.objects.all()
-        else:
-            qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
+        from django.contrib.auth import get_user_model
+        Usuario = get_user_model()
+        self.plataformas = list(Plataforma.objects.filter(ativa=True).order_by('nome'))
+        self.responsaveis = list(Usuario.objects.filter(is_active=True).order_by('first_name', 'username'))
+        self.filtros = Filtros(self.request.GET)
+        plataforma = self.filtros.id_entre('plataforma', [p.pk for p in self.plataformas], 'Selecione uma plataforma da lista.')
+        responsavel = None
+        if getattr(self.request.user, 'is_admin', False):
+            responsavel = self.filtros.id_entre(
+                'responsavel', [u.pk for u in self.responsaveis], 'Selecione um responsável da lista.')
+        if not self.filtros.validos:
+            return Chamado.objects.none()
 
-        qs = qs.select_related('plataforma', 'responsavel', 'criado_por')
-
-        plataforma_id = self.request.GET.get('plataforma', '').strip()
-        responsavel_id = self.request.GET.get('responsavel', '').strip()
-
-        if plataforma_id:
-            qs = qs.filter(plataforma_id=plataforma_id)
-        if responsavel_id:
-            qs = qs.filter(responsavel_id=responsavel_id)
-
+        qs = _escopo_usuario(self.request.user).select_related('plataforma', 'responsavel', 'criado_por')
+        if plataforma:
+            qs = qs.filter(plataforma_id=plataforma)
+        if responsavel:
+            qs = qs.filter(responsavel_id=responsavel)
         return qs.order_by('ordem_kanban', '-criado_em')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.contrib.auth import get_user_model
-        Usuario = get_user_model()
-
-        chamados = self.get_queryset()
-
-        colunas = [
-            {'status': Chamado.STATUS_ABERTO, 'titulo': 'Aberto', 'cor': 'amber', 'badge': 'bg-amber-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_ABERTO]},
-            {'status': Chamado.STATUS_EM_ANDAMENTO, 'titulo': 'Em Andamento', 'cor': 'blue', 'badge': 'bg-blue-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_EM_ANDAMENTO]},
-            {'status': Chamado.STATUS_EM_REVISAO, 'titulo': 'Em Revisão', 'cor': 'purple', 'badge': 'bg-purple-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_EM_REVISAO]},
-            {'status': Chamado.STATUS_CONCLUIDO, 'titulo': 'Concluído', 'cor': 'emerald', 'badge': 'bg-emerald-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_CONCLUIDO]},
-            {'status': Chamado.STATUS_CANCELADO, 'titulo': 'Cancelado', 'cor': 'slate', 'badge': 'bg-slate-500', 'chamados': [c for c in chamados if c.status == Chamado.STATUS_CANCELADO]},
-        ]
-
-        context['colunas'] = colunas
-        context['plataformas'] = Plataforma.objects.filter(ativa=True)
-        context['responsaveis'] = Usuario.objects.filter(is_active=True).order_by('first_name', 'username')
-        context['filtro_plataforma'] = self.request.GET.get('plataforma', '')
-        context['filtro_responsavel'] = self.request.GET.get('responsavel', '')
+        chamados = list(self.object_list)
+        context.update({
+            'colunas': [
+                {'status': status, 'titulo': titulo, 'chamados': [c for c in chamados if c.status == status]}
+                for status, titulo in self.COLUNAS
+            ],
+            'plataformas': self.plataformas,
+            'responsaveis': self.responsaveis,
+            'filtros': self.filtros.brutos,
+            'filtros_erros': self.filtros.erros,
+            'filtros_validos': self.filtros.validos,
+        })
         return context
 
 

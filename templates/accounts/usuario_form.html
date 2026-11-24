@@ -1,125 +1,48 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Editar Usuário — {{ object.username }}{% else %}Novo Usuário{% endif %} — Gestão de Chamados{% endblock %}
-{% block header_title %}{% if object %}Editar Usuário{% else %}Cadastrar Usuário{% endif %}{% endblock %}
+{% block title %}{% if object %}Editar @{{ object.username }}{% else %}Cadastrar usuário{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
-        <div class="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <header class="cabecalho-pagina mb-4">
             <div>
-                <h3 class="text-xl font-bold text-slate-800">
-                    {% if object %}Editar Usuário @{{ object.username }}{% else %}Novo Usuário da Equipe{% endif %}
-                </h3>
-                <p class="text-sm text-slate-500 mt-1">
-                    {% if object %}Atualize as informações cadastrais e papel do membro.{% else %}Crie uma nova conta com senha provisória para o colaborador.{% endif %}
-                </p>
+                <h1 class="h4 mb-1">{% if object %}Editar @{{ object.username }}{% else %}Cadastrar usuário{% endif %}</h1>
+                <p class="mb-0">{% if object %}Dados cadastrais, papel e acesso.{% else %}A conta é criada com senha provisória, trocada no primeiro acesso.{% endif %}</p>
             </div>
-            <a href="{% url 'accounts:usuario_list' %}" class="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center">
-                &larr; Voltar para a lista
-            </a>
+        </header>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                {% include 'partials/form_erros.html' %}
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    {% if not object %}{% include 'partials/campo.html' with campo=form.username rotulo='Nome de usuário (login)' %}{% endif %}
+                    <div class="row">
+                        <div class="col-sm-6">{% include 'partials/campo.html' with campo=form.first_name rotulo='Nome' %}</div>
+                        <div class="col-sm-6">{% include 'partials/campo.html' with campo=form.last_name rotulo='Sobrenome' %}</div>
+                    </div>
+                    {% include 'partials/campo.html' with campo=form.email rotulo='E-mail' %}
+                    <div class="row align-items-end">
+                        <div class="col-sm-6">{% include 'partials/campo.html' with campo=form.papel rotulo='Papel no sistema' %}</div>
+                        {% if object %}<div class="col-sm-6">{% include 'partials/campo.html' with campo=form.is_active rotulo='Conta ativa (permite entrar no sistema)' %}</div>{% endif %}
+                    </div>
+                    {% if form.senha_provisoria %}
+                    <div class="secao-formulario mb-3">
+                        <h2 class="secao-formulario-titulo mb-3">Acesso inicial</h2>
+                        {% include 'partials/campo.html' with campo=form.senha_provisoria %}
+                    </div>
+                    {% endif %}
+                    {% include 'partials/campo.html' with campo=form.avatar rotulo='Foto de perfil' %}
+                    {% if object.avatar %}
+                    <p class="small text-muted d-flex align-items-center gap-2 mt-n2">{% include 'partials/avatar.html' with pessoa=object tamanho='sm' %} Foto atual cadastrada</p>
+                    {% endif %}
+                    <div class="d-flex flex-wrap justify-content-end gap-2 pt-2 border-top">
+                        <a href="{% url 'accounts:usuario_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">{% if object %}Salvar alterações{% else %}Cadastrar usuário{% endif %}</button>
+                    </div>
+                </form>
+            </div>
         </div>
-
-        {% if form.errors %}
-        <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 space-y-1">
-            {% for field in form %}
-                {% for error in field.errors %}
-                    <p>• <strong>{{ field.label }}:</strong> {{ error }}</p>
-                {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                <p>• {{ error }}</p>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <form method="post" enctype="multipart/form-data" class="space-y-5">
-            {% csrf_token %}
-
-            {% if not object %}
-            <div>
-                <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    Nome de Usuário (login) *
-                </label>
-                {{ form.username }}
-                {% if form.username.help_text %}
-                <p class="text-xs text-slate-400 mt-1">{{ form.username.help_text }}</p>
-                {% endif %}
-            </div>
-            {% endif %}
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                        Nome
-                    </label>
-                    {{ form.first_name }}
-                </div>
-                <div>
-                    <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                        Sobrenome
-                    </label>
-                    {{ form.last_name }}
-                </div>
-            </div>
-
-            <div>
-                <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    E-mail Corporativo
-                </label>
-                {{ form.email }}
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div>
-                    <label for="{{ form.papel.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                        Papel no Sistema *
-                    </label>
-                    {{ form.papel }}
-                </div>
-
-                {% if object %}
-                <div class="pt-6 flex items-center space-x-2">
-                    {{ form.is_active }}
-                    <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-slate-700">
-                        Conta Ativa (permite login)
-                    </label>
-                </div>
-                {% endif %}
-            </div>
-
-            {% if form.senha_provisoria %}
-            <div class="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                <label for="{{ form.senha_provisoria.id_for_label }}" class="block text-sm font-semibold text-blue-900 mb-1">
-                    {{ form.senha_provisoria.label }} *
-                </label>
-                {{ form.senha_provisoria }}
-                <p class="text-xs text-blue-700 mt-1.5">{{ form.senha_provisoria.help_text }}</p>
-            </div>
-            {% endif %}
-
-            <div>
-                <label for="{{ form.avatar.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    Foto de Perfil / Avatar
-                </label>
-                {{ form.avatar }}
-                {% if object.avatar %}
-                <div class="mt-2 flex items-center space-x-2">
-                    <img src="{{ object.avatar.url }}" class="w-8 h-8 rounded-full object-cover">
-                    <span class="text-xs text-slate-500">Avatar atual cadastrado</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100">
-                <a href="{% url 'accounts:usuario_list' %}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
-                    Cancelar
-                </a>
-                <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-semibold text-sm transition">
-                    Salvar Dados
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 {% endblock %}

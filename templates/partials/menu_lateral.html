@@ -1,0 +1,44 @@
+{% with rm=request.resolver_match %}
+<aside class="offcanvas offcanvas-start menu-lateral" tabindex="-1" id="menu-principal" aria-labelledby="titulo-menu"
+       data-bs-backdrop="true" data-bs-scroll="false" data-bs-keyboard="true">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5 mb-0" id="titulo-menu">Menu</h2>
+        <button type="button" class="btn menu-fechar" data-bs-dismiss="offcanvas" aria-label="Fechar menu"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="menu-identificacao">
+            <span class="menu-usuario">{{ user.get_full_name|default:user.username }}</span>
+            <span class="cargo {% if user.is_admin %}cargo-admin{% else %}cargo-dev{% endif %}">{{ user.get_papel_display }}</span>
+            <span class="small text-muted">{% if user.is_admin %}Visualizando a equipe inteira{% else %}Visualizando suas demandas{% endif %}</span>
+        </div>
+        <nav aria-label="Navegação principal" class="menu-secao">
+            <ul class="nav flex-column menu-links">
+                {% include 'partials/links_principais.html' %}
+                <li class="nav-item"><a class="nav-link{% if rm.namespace == 'notificacoes' %} active{% endif %}" href="{% url 'notificacoes:notificacao_list' %}"{% if rm.namespace == 'notificacoes' %} aria-current="page"{% endif %}><i class="bi bi-bell" aria-hidden="true"></i> Notificações <span class="badge rounded-pill text-bg-danger{% if not notificacoes_nao_lidas_count %} d-none{% endif %}" data-contador-notificacoes><span data-contador-valor>{{ notificacoes_nao_lidas_count }}</span></span></a></li>
+            </ul>
+        </nav>
+        {% if user.is_admin %}
+        <nav class="menu-secao" aria-labelledby="menu-configuracoes">
+            <h3 class="menu-titulo" id="menu-configuracoes">Configurações</h3>
+            <ul class="nav flex-column menu-links">
+                <li class="nav-item"><a class="nav-link{% if rm.namespace == 'plataformas' %} active{% endif %}" href="{% url 'plataformas:plataforma_list' %}"{% if rm.namespace == 'plataformas' %} aria-current="page"{% endif %}><i class="bi bi-globe2" aria-hidden="true"></i> Plataformas</a></li>
+                <li class="nav-item"><a class="nav-link{% if 'usuario' in rm.url_name %} active{% endif %}" href="{% url 'accounts:usuario_list' %}"{% if 'usuario' in rm.url_name %} aria-current="page"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Usuários</a></li>
+            </ul>
+        </nav>
+        {% endif %}
+        <nav class="menu-secao" aria-labelledby="menu-conta">
+            <h3 class="menu-titulo" id="menu-conta">Conta</h3>
+            <ul class="nav flex-column menu-links">
+                <li class="nav-item"><a class="nav-link{% if rm.url_name == 'trocar_senha' %} active{% endif %}" href="{% url 'accounts:trocar_senha' %}"><i class="bi bi-key" aria-hidden="true"></i> Trocar senha</a></li>
+            </ul>
+            {% if user.is_staff %}<a class="menu-admin" href="{% url 'admin:index' %}"><i class="bi bi-gear" aria-hidden="true"></i> Django Admin</a>{% endif %}
+        </nav>
+    </div>
+    <div class="menu-rodape">
+        <button type="button" class="btn btn-primary w-100" data-bs-dismiss="offcanvas">Voltar à página</button>
+        <form method="post" action="{% url 'accounts:logout' %}" class="mt-2">
+            {% csrf_token %}<button type="submit" class="btn btn-link w-100">Sair da conta</button>
+        </form>
+    </div>
+</aside>
+{% endwith %}

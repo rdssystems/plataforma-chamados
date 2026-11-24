@@ -1,4 +1,6 @@
 from django import forms
+
+from config.formularios import FormularioBootstrap
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from plataformas.models import Plataforma
@@ -7,35 +9,24 @@ from .models import Chamado
 Usuario = get_user_model()
 
 
-class ChamadoForm(forms.ModelForm):
+class ChamadoForm(FormularioBootstrap, forms.ModelForm):
     class Meta:
         model = Chamado
         fields = ['titulo', 'descricao', 'plataforma', 'tipo', 'prioridade', 'responsavel', 'prazo']
         widgets = {
             'titulo': forms.TextInput(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none',
                 'placeholder': 'Título claro e objetivo da demanda'
             }),
             'descricao': forms.Textarea(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none',
                 'rows': 4,
                 'placeholder': 'Descreva detalhadamente o problema, passos para reproduzir ou requisitos...'
             }),
-            'plataforma': forms.Select(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'
-            }),
-            'tipo': forms.Select(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'
-            }),
-            'prioridade': forms.Select(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'
-            }),
-            'responsavel': forms.Select(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'
-            }),
+            'plataforma': forms.Select(attrs={}),
+            'tipo': forms.Select(attrs={}),
+            'prioridade': forms.Select(attrs={}),
+            'responsavel': forms.Select(attrs={}),
             'prazo': forms.DateInput(attrs={
                 'type': 'date',
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none'
             }),
         }
 
@@ -79,19 +70,18 @@ class ChamadoForm(forms.ModelForm):
         return chamado
 
 
-class MudarStatusForm(forms.Form):
+class MudarStatusForm(FormularioBootstrap, forms.Form):
     novo_status = forms.ChoiceField(choices=Chamado.STATUS_CHOICES)
     comentario = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={
             'rows': 3,
             'placeholder': 'Motivo da alteração (obrigatório para devolução, cancelamento e reabertura)...',
-            'class': 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm'
         })
     )
 
 
-class ComentarioForm(forms.ModelForm):
+class ComentarioForm(FormularioBootstrap, forms.ModelForm):
     class Meta:
         from .models import Comentario
         model = Comentario
@@ -99,21 +89,18 @@ class ComentarioForm(forms.ModelForm):
         widgets = {
             'texto': forms.Textarea(attrs={
                 'rows': 3,
-                'class': 'w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm',
                 'placeholder': 'Escreva um comentário ou atualização sobre este chamado...'
             })
         }
 
 
-class AnexoForm(forms.ModelForm):
+class AnexoForm(FormularioBootstrap, forms.ModelForm):
     class Meta:
         from .models import Anexo
         model = Anexo
         fields = ['arquivo']
         widgets = {
-            'arquivo': forms.FileInput(attrs={
-                'class': 'block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
-            })
+            'arquivo': forms.FileInput(attrs={})
         }
 
     def clean_arquivo(self):

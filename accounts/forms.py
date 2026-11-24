@@ -1,34 +1,33 @@
 from django import forms
+
+from config.formularios import FormularioBootstrap
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import get_user_model
 
 Usuario = get_user_model()
 
 
-class CustomLoginForm(AuthenticationForm):
+class CustomLoginForm(FormularioBootstrap, AuthenticationForm):
     username = forms.CharField(
         label='Usuário',
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition',
-            'placeholder': 'Digite seu usuário'
+            'autofocus': True,
+            'autocomplete': 'username',
+            'autocapitalize': 'none',
         })
     )
     password = forms.CharField(
         label='Senha',
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition',
-            'placeholder': 'Digite sua senha'
-        })
+        widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'})
     )
 
 
-class CustomPasswordChangeForm(PasswordChangeForm):
+class CustomPasswordChangeForm(FormularioBootstrap, PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.update({
-                'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition'
-            })
+        self.fields['old_password'].widget.attrs['autocomplete'] = 'current-password'
+        for nome in ('new_password1', 'new_password2'):
+            self.fields[nome].widget.attrs['autocomplete'] = 'new-password'
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -38,11 +37,10 @@ class CustomPasswordChangeForm(PasswordChangeForm):
         return user
 
 
-class UsuarioCriarForm(forms.ModelForm):
+class UsuarioCriarForm(FormularioBootstrap, forms.ModelForm):
     senha_provisoria = forms.CharField(
         label='Senha Provisória',
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition',
             'placeholder': 'Digite uma senha temporária'
         }),
         help_text='O usuário será obrigado a alterá-la no primeiro acesso.'
@@ -52,12 +50,12 @@ class UsuarioCriarForm(forms.ModelForm):
         model = Usuario
         fields = ['username', 'first_name', 'last_name', 'email', 'papel', 'avatar', 'senha_provisoria']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'papel': forms.Select(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'avatar': forms.FileInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'username': forms.TextInput(attrs={}),
+            'first_name': forms.TextInput(attrs={}),
+            'last_name': forms.TextInput(attrs={}),
+            'email': forms.EmailInput(attrs={}),
+            'papel': forms.Select(attrs={}),
+            'avatar': forms.FileInput(attrs={}),
         }
 
     def save(self, commit=True):
@@ -73,17 +71,17 @@ class UsuarioCriarForm(forms.ModelForm):
         return user
 
 
-class UsuarioEditarForm(forms.ModelForm):
+class UsuarioEditarForm(FormularioBootstrap, forms.ModelForm):
     class Meta:
         model = Usuario
         fields = ['first_name', 'last_name', 'email', 'papel', 'is_active', 'avatar']
         widgets = {
-            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'email': forms.EmailInput(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'papel': forms.Select(attrs={'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-blue-600 rounded focus:ring-blue-500'}),
-            'avatar': forms.FileInput(attrs={'class': 'w-full px-3 py-2 border rounded-lg'}),
+            'first_name': forms.TextInput(attrs={}),
+            'last_name': forms.TextInput(attrs={}),
+            'email': forms.EmailInput(attrs={}),
+            'papel': forms.Select(attrs={}),
+            'is_active': forms.CheckboxInput(attrs={}),
+            'avatar': forms.FileInput(attrs={}),
         }
 
     def save(self, commit=True):
@@ -97,11 +95,10 @@ class UsuarioEditarForm(forms.ModelForm):
         return user
 
 
-class UsuarioRedefinirSenhaForm(forms.Form):
+class UsuarioRedefinirSenhaForm(FormularioBootstrap, forms.Form):
     nova_senha_provisoria = forms.CharField(
         label='Nova Senha Provisória',
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition',
             'placeholder': 'Digite a nova senha provisória'
         }),
         help_text='O usuário será marcado para trocar de senha no próximo acesso.'

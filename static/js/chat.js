@@ -14,14 +14,10 @@
     function mostrarAba(nome) {
         abas.forEach(function (b) {
             var ativa = b.dataset.aba === nome;
-            b.classList.toggle('text-blue-600', ativa);
-            b.classList.toggle('border-blue-600', ativa);
-            b.classList.toggle('text-slate-500', !ativa);
-            b.classList.toggle('border-transparent', !ativa);
-            b.setAttribute('aria-selected', String(ativa));
+            b.setAttribute('aria-selected', String(ativa));  // o estilo da aba vem do aria-selected
         });
         document.querySelectorAll('[data-painel]').forEach(function (p) {
-            p.classList.toggle('hidden', p.dataset.painel !== nome);
+            p.classList.toggle('d-none', p.dataset.painel !== nome);
         });
     }
     abas.forEach(function (b) {
@@ -72,13 +68,12 @@
     function bolha(m) {
         var minha = m.autor_id === dados.usuarioId;
         var data = new Date(m.criada_em);
-        var linha = el('div', 'flex ' + (minha ? 'justify-end' : 'justify-start'));
+        var linha = el('div', 'chat-linha' + (minha ? ' minha' : ''));
         linha.dataset.item = '';
-        var caixa = el('div', 'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ' +
-            (minha ? 'bg-blue-600 text-white rounded-br-md' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-md'));
-        caixa.appendChild(el('p', 'whitespace-pre-wrap break-words', m.texto));
+        var caixa = el('div', 'chat-bolha');
+        caixa.appendChild(el('p', 'mb-0 texto-livre', m.texto));
         var hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        caixa.appendChild(el('p', 'mt-1 text-[11px] text-right ' + (minha ? 'text-blue-100' : 'text-slate-400'), hora));
+        caixa.appendChild(el('p', 'chat-bolha-hora mb-0', hora));
         caixa.title = data.toLocaleString('pt-BR');
         linha.appendChild(caixa);
         return linha;
@@ -92,15 +87,15 @@
             var data = new Date(m.criada_em);
             if (data.toDateString() !== diaAtual) {
                 diaAtual = data.toDateString();
-                var sep = el('div', 'flex justify-center py-2');
+                var sep = el('div', 'chat-dia');
                 sep.dataset.item = '';
-                sep.appendChild(el('span', 'text-[11px] font-medium text-slate-500 bg-slate-200/70 px-2.5 py-0.5 rounded-full', rotuloDia(data)));
+                sep.appendChild(el('span', '', rotuloDia(data)));
                 fragmento.appendChild(sep);
             }
             fragmento.appendChild(bolha(m));
         });
         if (!mensagens.length) {
-            var vazio = el('p', 'text-center text-sm text-slate-400 py-8', 'Nenhuma mensagem ainda. Diga olá!');
+            var vazio = el('p', 'text-center small text-muted py-5 mb-0', 'Nenhuma mensagem ainda. Diga olá!');
             vazio.dataset.item = '';
             fragmento.appendChild(vazio);
         }
@@ -114,7 +109,7 @@
         lista.scrollTop = lista.scrollHeight;
     }
     function mostrarCarregarAnteriores(temMais) {
-        blocoAnteriores.classList.toggle('hidden', !temMais);
+        blocoAnteriores.classList.toggle('d-none', !temMais);
     }
 
     function buscarJson(url) {
@@ -164,7 +159,7 @@
             var status = document.getElementById('status-outro');
             if (status && status.textContent.trim() !== 'Usuário desativado') {
                 status.textContent = d.online ? 'Online' : 'Offline';
-                status.className = 'text-xs ' + (d.online ? 'text-emerald-600' : 'text-slate-400');
+                status.className = 'small mb-0 ' + (d.online ? 'text-success' : 'text-muted');
             }
         }
     });
@@ -206,7 +201,7 @@
             e.preventDefault();
             if (!campo.value.trim() || botaoEnviar.disabled) return;
             botaoEnviar.disabled = true;
-            erro.classList.add('hidden');
+            erro.classList.add('d-none');
             fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
                 .then(function (r) {
                     return r.json().catch(function () { return {}; }).then(function (corpo) {
@@ -222,7 +217,7 @@
                 })
                 .catch(function (err) {
                     erro.textContent = err.message;
-                    erro.classList.remove('hidden');
+                    erro.classList.remove('d-none');
                 })
                 .finally(function () {
                     botaoEnviar.disabled = false;

@@ -1,0 +1,5 @@
+{% comment %}Selo de prioridade: cor, ícone e texto dizem o mesmo. Uso: include com chamado=c{% endcomment %}
+{% if chamado.prioridade == 'urgente' %}<span class="selo selo-critico"><i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i><span class="visually-hidden">Prioridade </span>Urgente</span>
+{% elif chamado.prioridade == 'alta' %}<span class="selo selo-atencao"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span class="visually-hidden">Prioridade </span>Alta</span>
+{% elif chamado.prioridade == 'media' %}<span class="selo selo-primario"><i class="bi bi-dash-circle" aria-hidden="true"></i><span class="visually-hidden">Prioridade </span>Média</span>
+{% else %}<span class="selo selo-neutro"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i><span class="visually-hidden">Prioridade </span>Baixa</span>{% endif %}
