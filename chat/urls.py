@@ -13,4 +13,5 @@ urlpatterns = [
     path('chat/<int:pk>/enviar/', views.enviar_mensagem, name='enviar'),
     path('chat/<int:pk>/mensagens/', views.listar_mensagens, name='mensagens'),
     path('chat/<int:pk>/lida/', views.marcar_lida, name='marcar_lida'),
+    path('chat/<int:pk>/resumo/', views.resumo_conversa, name='resumo'),
 ]

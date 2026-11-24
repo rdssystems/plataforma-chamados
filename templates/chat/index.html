@@ -14,9 +14,10 @@
             <button type="button" class="chat-aba" role="tab" data-aba="online" aria-controls="painel-online" aria-selected="false">
                 Online <span class="badge rounded-pill text-bg-light border" data-online-count-label>0</span>
             </button>
+            {% include 'chat/partials/preferencias.html' with id_prefixo='pagina' %}
         </div>
         <div class="chat-painel" id="painel-conversas" role="tabpanel" data-painel="conversas">
-            <div id="lista-conversas" data-ativa="{{ conversa.pk|default:'' }}">
+            <div id="lista-conversas" data-lista-conversas data-ativa="{{ conversa.pk|default:'' }}">
                 {% include 'chat/partials/conversas.html' with conversa_ativa_id=conversa.pk %}
             </div>
         </div>
@@ -32,7 +33,7 @@
             {% include 'partials/avatar.html' with pessoa=outro tamanho='lg' %}
             <div class="min-w-0">
                 <h2 class="h6 mb-0 text-truncate">{{ outro.get_full_name|default:outro.username }}</h2>
-                <p id="status-outro" class="small mb-0 {% if outro_online %}text-success{% else %}text-muted{% endif %}">
+                <p id="status-outro" class="small mb-0 {% if outro_online %}text-success{% else %}text-muted{% endif %}" data-desativado="{% if not outro.is_active %}true{% else %}false{% endif %}">
                     {% if not outro.is_active %}Usuário desativado{% elif outro_online %}Online{% else %}Offline{% endif %}
                 </p>
             </div>
@@ -72,5 +73,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/chat.js' %}?v=20261124-1" defer></script>
+<script src="{% static 'js/chat_conversa.js' %}?v=20261124-2" defer></script>
+<script src="{% static 'js/chat.js' %}?v=20261124-2" defer></script>
 {% endblock %}

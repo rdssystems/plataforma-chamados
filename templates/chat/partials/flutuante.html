@@ -1,0 +1,73 @@
+{% comment %}
+Chat flutuante (canto inferior direito), em todas as páginas exceto a do próprio chat.
+Comportamento em static/js/chat_flutuante.js; a conversa usa static/js/chat_conversa.js.
+{% endcomment %}
+<div id="chat-flutuante" class="chat-flutuante" data-usuario-id="{{ user.pk }}"
+     data-url-conversas="{% url 'chat:conversas' %}" data-url-pagina="{% url 'chat:index' %}">
+    <input type="hidden" data-chat-csrf value="{{ csrf_token }}">
+
+    <section id="chat-janela" class="chat-janela" aria-labelledby="chat-janela-titulo" hidden>
+        <header class="chat-janela-cabecalho">
+            <button type="button" class="chat-janela-botao" data-chat-voltar hidden aria-label="Voltar para as conversas" title="Voltar">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            </button>
+            <div class="min-w-0 flex-grow-1">
+                <h2 class="chat-janela-titulo" id="chat-janela-titulo">Chat</h2>
+                <p class="chat-janela-status" data-chat-status hidden></p>
+            </div>
+            {% include 'chat/partials/preferencias.html' with id_prefixo='flutuante' clara=True %}
+            <a href="{% url 'chat:index' %}" class="chat-janela-botao" data-chat-tela-cheia aria-label="Abrir o chat em tela cheia" title="Abrir em tela cheia">
+                <i class="bi bi-arrows-angle-expand" aria-hidden="true"></i>
+            </a>
+            <button type="button" class="chat-janela-botao" data-chat-minimizar aria-label="Minimizar o chat" title="Minimizar">
+                <i class="bi bi-dash-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <div class="chat-janela-corpo" data-chat-tela="lista">
+            <div class="chat-abas" role="tablist">
+                <button type="button" class="chat-aba" role="tab" data-chat-aba="conversas" aria-selected="true">Conversas</button>
+                <button type="button" class="chat-aba" role="tab" data-chat-aba="online" aria-selected="false">
+                    Online <span class="badge rounded-pill text-bg-light border" data-online-count-label>0</span>
+                </button>
+            </div>
+            <div class="chat-painel" data-chat-painel="conversas" role="tabpanel">
+                <div data-lista-conversas data-ativa=""><p class="small text-muted text-center py-4 mb-0">Carregando…</p></div>
+            </div>
+            <div class="chat-painel d-none" data-chat-painel="online" role="tabpanel">
+                <div data-usuarios-online><p class="small text-muted text-center py-4 mb-0">Carregando…</p></div>
+            </div>
+        </div>
+        <div class="chat-janela-corpo d-none" data-chat-tela="conversa"></div>
+    </section>
+
+    <button type="button" id="chat-lancador" class="chat-lancador" aria-controls="chat-janela" aria-expanded="false">
+        <i class="bi bi-chat-dots-fill" aria-hidden="true"></i>
+        <span class="chat-lancador-rotulo">Chat</span>
+        <span class="chat-lancador-contador{% if not chat_nao_lidas_count %} d-none{% endif %}" data-contador-chat>
+            <span class="visually-hidden">Mensagens não lidas: </span><span data-contador-valor>{{ chat_nao_lidas_count }}</span>
+        </span>
+    </button>
+
+    <template id="chat-flutuante-conversa">
+        <div class="chat-mensagens" data-mensagens aria-live="polite">
+            <div class="d-none text-center mb-2" data-anteriores>
+                <button type="button" class="btn btn-sm btn-outline-primary">Carregar anteriores</button>
+            </div>
+        </div>
+        <form class="chat-envio" method="post" data-form>
+            <label class="visually-hidden" data-rotulo-campo>Mensagem</label>
+            <div class="d-flex gap-2 align-items-end">
+                <textarea name="texto" rows="1" maxlength="4000" required class="form-control form-control-sm"
+                          placeholder="Mensagem… (Enter envia)"></textarea>
+                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0" aria-label="Enviar mensagem">
+                    <i class="bi bi-send" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="d-none small text-danger mt-1 mb-0" role="alert" data-erro></p>
+        </form>
+        <p class="chat-envio small text-muted mb-0 d-none" data-desativado>
+            <i class="bi bi-person-slash" aria-hidden="true"></i> Usuário desativado: o histórico continua disponível, mas não é possível enviar mensagens.
+        </p>
+    </template>
+</div>

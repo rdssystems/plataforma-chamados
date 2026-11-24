@@ -8,7 +8,7 @@
                 <div class="small {% if u.online %}text-success{% else %}text-muted{% endif %}">{% if u.online %}Online{% else %}Offline{% endif %}</div>
             </div>
         </div>
-        <form method="post" action="{% url 'chat:iniciar' u.pk %}" class="flex-shrink-0">
+        <form method="post" action="{% url 'chat:iniciar' u.pk %}" class="flex-shrink-0" data-iniciar-conversa>
             {% csrf_token %}
             <button type="submit" class="btn btn-sm btn-outline-primary">Conversar<span class="visually-hidden"> com {{ u.get_full_name|default:u.username }}</span></button>
         </form>

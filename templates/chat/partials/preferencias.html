@@ -1,0 +1,24 @@
+{% comment %}
+Preferências de aviso de nova mensagem (guardadas no navegador; ligadas por tempo_real.js).
+Parâmetros: id_prefixo (ids únicos na página), clara=True para usar sobre fundo anil.
+{% endcomment %}
+<div class="dropdown chat-preferencias">
+    <button type="button" class="{% if clara %}chat-janela-botao{% else %}btn btn-sm btn-link text-muted px-2{% endif %}"
+            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+            aria-label="Avisos de nova mensagem" title="Avisos de nova mensagem">
+        <i class="bi bi-bell" aria-hidden="true"></i>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-3 chat-preferencias-menu">
+        <p class="small fw-semibold mb-2">Avisos de nova mensagem</p>
+        <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="pref-som-{{ id_prefixo }}" data-pref="som">
+            <label class="form-check-label small" for="pref-som-{{ id_prefixo }}">Tocar som</label>
+        </div>
+        <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="pref-sistema-{{ id_prefixo }}" data-pref="sistema">
+            <label class="form-check-label small" for="pref-sistema-{{ id_prefixo }}">Notificação do sistema quando a aba estiver em segundo plano</label>
+        </div>
+        <p class="small text-danger mb-2" data-pref-aviso hidden></p>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-pref-testar><i class="bi bi-volume-up" aria-hidden="true"></i> Testar som</button>
+    </div>
+</div>

@@ -312,3 +312,54 @@ def test_evento_enviado_ao_grupo_do_usuario():
         assert (await layer.receive(canal))['dados'] == {'ok': True}
 
     async_to_sync(cenario)()
+
+
+@pytest.mark.django_db
+class TestChatFlutuante:
+    def test_iniciar_responde_json_para_a_janela_flutuante(self, client, alice, bob):
+        client.force_login(alice)
+        res = client.post(reverse('chat:iniciar', args=[bob.pk]), HTTP_ACCEPT='application/json')
+        assert res.status_code == 200
+        assert res.json()['conversa_id'] == Conversa.objects.get().pk
+
+    def test_iniciar_consigo_mesmo_em_json_da_erro_400(self, client, alice):
+        client.force_login(alice)
+        res = client.post(reverse('chat:iniciar', args=[alice.pk]), HTTP_ACCEPT='application/json')
+        assert res.status_code == 400
+        assert 'consigo mesmo' in res.json()['erro']
+
+    def test_resumo_traz_o_necessario_para_abrir_a_conversa(self, client, conversa, alice, bob):
+        services.enviar_mensagem(conversa, bob, 'Oi Alice')
+        client.force_login(alice)
+        dados = client.get(reverse('chat:resumo', args=[conversa.pk])).json()
+        assert dados['id'] == conversa.pk
+        assert dados['outro']['nome'] == 'bob' and dados['outro']['ativo'] is True
+        assert dados['pode_enviar'] is True
+        assert [m['texto'] for m in dados['mensagens']] == ['Oi Alice']
+        assert dados['urls']['enviar'] == reverse('chat:enviar', args=[conversa.pk])
+        # Abrir o resumo não marca como lida: quem marca é a janela, só se estiver à vista.
+        assert services.total_nao_lidas(alice) == 1
+
+    def test_resumo_de_conversa_alheia_e_404(self, client, conversa, carol):
+        client.force_login(carol)
+        assert client.get(reverse('chat:resumo', args=[conversa.pk])).status_code == 404
+
+    def test_janela_aparece_nas_paginas_mas_nao_no_chat(self, client, alice):
+        client.force_login(alice)
+        painel = client.get(reverse('dashboard:index')).content.decode()
+        assert 'id="chat-flutuante"' in painel and 'js/chat_flutuante.js' in painel
+        pagina_chat = client.get(reverse('chat:index')).content.decode()
+        assert 'id="chat-flutuante"' not in pagina_chat
+        assert 'data-pref="som"' in pagina_chat  # as preferências de aviso também ficam na página do chat
+
+    def test_janela_nao_aparece_sem_login_nem_na_troca_obrigatoria_de_senha(self, client, alice):
+        assert 'id="chat-flutuante"' not in client.get(reverse('accounts:login')).content.decode()
+        alice.deve_trocar_senha = True
+        alice.save()
+        client.force_login(alice)
+        assert 'id="chat-flutuante"' not in client.get(reverse('accounts:trocar_senha')).content.decode()
+
+    def test_lista_de_usuarios_permite_iniciar_pela_janela(self, client, alice, bob):
+        client.force_login(alice)
+        html = client.get(reverse('chat:usuarios')).content.decode()
+        assert 'data-iniciar-conversa' in html

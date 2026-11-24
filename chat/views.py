@@ -65,13 +65,55 @@ def chat_index(request, pk=None):
 @login_required
 @require_POST
 def iniciar_conversa(request, usuario_id):
+    """Abre (ou cria) a conversa com o usuário. A janela flutuante pede JSON; a página, redirecionamento."""
+    quer_json = 'application/json' in request.headers.get('Accept', '')
     outro = get_object_or_404(Usuario, pk=usuario_id, is_active=True)
     try:
         conversa = services.obter_ou_criar_conversa(request.user, outro)
     except ValidationError as erro:
+        if quer_json:
+            return JsonResponse({'erro': erro.messages[0]}, status=400)
         messages.error(request, erro.messages[0])
         return redirect('chat:index')
+    if quer_json:
+        return JsonResponse({'conversa_id': conversa.pk})
     return redirect('chat:conversa', pk=conversa.pk)
+
+
+@login_required
+@require_GET
+def resumo_conversa(request, pk):
+    """Tudo o que a janela flutuante precisa para abrir uma conversa, em uma requisição."""
+    conversa = _conversa_do_usuario(request, pk)
+    outro = _outro_participante(conversa, request.user)
+    mensagens, tem_mais = _pagina_mensagens(conversa)
+    return JsonResponse({
+        'id': conversa.pk,
+        'outro': {
+            'id': outro.pk if outro else None,
+            'nome': services.nome_exibicao(outro) if outro else 'Usuário removido',
+            'iniciais': _iniciais(outro),
+            'online': bool(outro and outro.pk in services.ids_online()),
+            'ativo': bool(outro and outro.is_active),
+        },
+        'pode_enviar': bool(outro and outro.is_active),
+        'mensagens': mensagens,
+        'tem_mais': tem_mais,
+        'urls': {
+            'mensagens': reverse('chat:mensagens', args=[conversa.pk]),
+            'enviar': reverse('chat:enviar', args=[conversa.pk]),
+            'lida': reverse('chat:marcar_lida', args=[conversa.pk]),
+            'pagina': reverse('chat:conversa', args=[conversa.pk]),
+        },
+    })
+
+
+def _iniciais(usuario):
+    if not usuario:
+        return '?'
+    if usuario.first_name:
+        return (usuario.first_name[:1] + usuario.last_name[:1]).upper()
+    return usuario.username[:2].upper()
 
 
 @login_required
