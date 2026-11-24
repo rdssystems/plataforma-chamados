@@ -112,12 +112,12 @@
     <!-- Gráficos (Apache ECharts, desenhados por static/js/dashboard_graficos.js) -->
     <div id="dashboard-graficos" class="grid grid-cols-1 lg:grid-cols-2 gap-6"
          data-url="{% url 'dashboard:dados_graficos' %}{% if dev_selecionado %}?dev={{ dev_selecionado|urlencode }}{% endif %}">
-        {% include 'dashboard/partials/grafico_card.html' with tipo='linha' titulo='Chamados abertos × concluídos por semana' subtitulo='Últimas 12 semanas' %}
-        {% include 'dashboard/partials/grafico_card.html' with tipo='plataformas' titulo='Chamados ativos por plataforma' subtitulo='Da plataforma com mais chamados para a com menos' %}
+        {% include 'dashboard/partials/grafico_card.html' with tipo='linha' titulo='Chamados abertos × concluídos por semana' subtitulo='Últimas 12 semanas' recorte=recorte_dev %}
+        {% include 'dashboard/partials/grafico_card.html' with tipo='plataformas' titulo='Chamados ativos por plataforma' subtitulo='Da plataforma com mais chamados para a com menos' recorte=recorte_dev %}
         {% if user.is_admin %}
-        {% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' %}
+        {% if recorte_dev %}{% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' recorte='equipe inteira, sem o filtro de dev' %}{% else %}{% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' %}{% endif %}
         {% endif %}
-        {% include 'dashboard/partials/grafico_card.html' with tipo='prioridades' titulo='Chamados ativos por prioridade' subtitulo='' classes=user.is_admin|yesno:',lg:col-span-2' %}
+        {% include 'dashboard/partials/grafico_card.html' with tipo='prioridades' titulo='Chamados ativos por prioridade' subtitulo='' recorte=recorte_dev classes=user.is_admin|yesno:',lg:col-span-2' %}
     </div>
 
     <!-- Listas Rápidas do Dashboard -->

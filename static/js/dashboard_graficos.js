@@ -112,6 +112,8 @@
                 ' concluídos. Os valores de cada semana estão na tabela do botão Ver tabela.',
             mensagemVazio: 'Nenhum chamado aberto ou concluído nas últimas 12 semanas.',
             altura: 256,
+            pontos: d.labels.length,
+            inicioTeclado: ultimo,
             opcao: Object.assign({}, OPCAO_BASE, {
                 legend: {
                     top: 0, left: 0, icon: 'roundRect', itemWidth: 14, itemHeight: 3, itemGap: 16,
@@ -250,6 +252,7 @@
             mensagemVazio: o.nomes.length ? 'Nenhum chamado ativo nas plataformas.' : 'Nenhuma plataforma ativa.',
             descricao: 'Gráfico de barras com os chamados ativos por plataforma: ' + listar(o.nomes, o.valores) + '.',
             altura: alturaBarras(o.nomes.length),
+            pontos: o.nomes.length,
             opcao: barrasHorizontais({
                 nomes: o.nomes, valores: o.valores, marcadores: o.extra,
                 cores: o.nomes.map(function () { return COR.serie1; }),
@@ -271,6 +274,7 @@
             mensagemVazio: o.nomes.length ? 'Nenhum chamado concluído neste mês.' : 'Nenhum desenvolvedor ativo.',
             descricao: 'Gráfico de barras com os chamados concluídos por desenvolvedor no mês: ' + listar(o.nomes, o.valores) + '.',
             altura: alturaBarras(o.nomes.length),
+            pontos: o.nomes.length,
             opcao: barrasHorizontais({
                 nomes: o.nomes, valores: o.valores,
                 cores: o.nomes.map(function () { return COR.serie1; }),
@@ -295,6 +299,7 @@
                 d.labels.map(function (n, i) { return n + ' ' + numero(d.totais[i]) + ' (' + percentual(d.totais[i]) + ')'; }).join(', ') + '.',
             subtitulo: numero(total) + (total === 1 ? ' chamado ativo' : ' chamados ativos'),
             altura: alturaBarras(d.labels.length),
+            pontos: d.labels.length,
             opcao: barrasHorizontais({
                 nomes: d.labels, valores: d.totais, cores: COR.prioridade,
                 unidade: 'chamados ativos',
@@ -352,8 +357,51 @@
         if (botao) botao.classList.add('hidden');
     }
 
-    function mostrarErroGeral(texto) {
-        raiz.querySelectorAll('[data-grafico]').forEach(function (fig) { mostrarEstado(fig, texto); });
+    function mostrarErroGeral(texto, permitirNovaTentativa) {
+        raiz.querySelectorAll('[data-grafico]').forEach(function (fig) {
+            mostrarEstado(fig, texto);
+            if (!permitirNovaTentativa) return;
+            var botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'block mx-auto mt-3 not-italic text-xs font-medium text-blue-600 hover:text-blue-800 ' +
+                'px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-50';
+            botao.textContent = 'Tentar de novo';
+            botao.addEventListener('click', function () {
+                raiz.querySelectorAll('[data-grafico]').forEach(limparEstado);
+                carregar();
+            });
+            fig.querySelector('[data-estado]').appendChild(botao);
+        });
+    }
+
+    function limparEstado(fig) {
+        var estado = fig.querySelector('[data-estado]');
+        estado.replaceChildren();
+        estado.classList.add('hidden');
+        fig.querySelector('[data-area-grafico]').classList.remove('hidden');
+        var botao = fig.querySelector('[data-alternar-tabela]');
+        if (botao) botao.classList.remove('hidden');
+    }
+
+    // Tooltip também pelo teclado: Tab foca o gráfico; setas, Home e End percorrem; Esc fecha.
+    function ativarTeclado(area, grafico, total, inicio) {
+        if (!total) return;
+        area.tabIndex = 0;
+        area.classList.add('rounded-lg', 'outline-none', 'focus-visible:ring-2', 'focus-visible:ring-blue-500');
+        var atual = -1;
+        function mostrar(i) {
+            atual = Math.min(Math.max(i, 0), total - 1);
+            grafico.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: atual });
+        }
+        area.addEventListener('focus', function () { mostrar(atual < 0 ? (inicio || 0) : atual); });
+        area.addEventListener('blur', function () { grafico.dispatchAction({ type: 'hideTip' }); });
+        area.addEventListener('keydown', function (e) {
+            var passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+            if (passo) { e.preventDefault(); mostrar(atual + passo); }
+            else if (e.key === 'Home') { e.preventDefault(); mostrar(0); }
+            else if (e.key === 'End') { e.preventDefault(); mostrar(total - 1); }
+            else if (e.key === 'Escape') { grafico.dispatchAction({ type: 'hideTip' }); }
+        });
     }
 
     function configurarAlternancia(fig) {
@@ -383,9 +431,13 @@
             var area = fig.querySelector('[data-area-grafico]');
             area.style.height = g.altura + 'px';
             var grafico = echarts.init(area, null, { renderer: 'svg', locale: 'PT-br' });
-            g.opcao.aria = { enabled: true, label: { description: g.descricao } };
+            g.opcao.aria = {
+                enabled: true,
+                label: { description: g.descricao + ' Com o gráfico em foco, use as setas para percorrer os valores.' },
+            };
             grafico.setOption(g.opcao);
             graficos.push(grafico);
+            ativarTeclado(area, grafico, g.pontos, g.inicioTeclado);
             montarTabela(fig.querySelector('[data-area-tabela]'), g.tabela);
             configurarAlternancia(fig);
         });
@@ -398,14 +450,18 @@
         }
     }
 
-    fetch(raiz.dataset.url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-        .then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
-        .then(renderizar)
-        .catch(function (erro) {
-            console.error('Erro ao carregar os gráficos:', erro);
-            mostrarErroGeral('Não foi possível carregar os dados deste gráfico. Recarregue a página para tentar de novo.');
-        });
+    function carregar() {
+        fetch(raiz.dataset.url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(renderizar)
+            .catch(function (erro) {
+                console.error('Erro ao carregar os gráficos:', erro);
+                mostrarErroGeral('Não foi possível carregar os dados deste gráfico.', true);
+            });
+    }
+
+    carregar();
 })();

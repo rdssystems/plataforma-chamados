@@ -44,7 +44,11 @@ class DashboardIndexView(LoginRequiredMixin, TemplateView):
             if dev_id:
                 qs = qs.filter(responsavel_id=dev_id)
             context['dev_selecionado'] = dev_id
-            context['devs'] = Usuario.objects.filter(is_active=True).order_by('first_name', 'username')
+            devs = list(Usuario.objects.filter(is_active=True).order_by('first_name', 'username'))
+            context['devs'] = devs
+            # Recorte exibido junto aos gráficos (padrão da Secretaria: "mostre o recorte perto dos números").
+            nome_dev = next((d.get_full_name() or d.username for d in devs if str(d.pk) == dev_id), '')
+            context['recorte_dev'] = f'somente {nome_dev}' if nome_dev else ''
         else:
             qs = Chamado.objects.filter(Q(responsavel=user) | Q(criado_por=user))
 
