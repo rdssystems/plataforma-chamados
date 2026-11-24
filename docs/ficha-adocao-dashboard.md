@@ -33,7 +33,7 @@ Percentual do relatório — **No prazo**: numerador = concluídos no período c
 | Listagem (chamados, plataformas, usuários, notificações) | Cabeçalho com a ação principal, painel de filtros, filtros ativos com remoção individual (chamados), total, tabela com rolagem horizontal própria, paginação que preserva o recorte. |
 | Detalhe do chamado | Trilha, identificação e selos de situação no cabeçalho, dados agrupados, linha do tempo, anexos, comentários e "Próximas ações" com a principal destacada. |
 | Cadastro e edição | Campos agrupados na ordem de preenchimento, erros junto ao campo (`aria-describedby`), resumo no topo, valores preservados, "Cancelar" + ação principal. |
-| Relatório | Período e recorte no cabeçalho, atalhos de período antes dos filtros, exportação Excel/PDF com o mesmo recorte e as mesmas permissões. |
+| Relatório | Período e recorte no cabeçalho, atalhos de período antes dos filtros, exportação Excel/PDF com o mesmo recorte e as mesmas permissões. O PDF repete a identidade visual (Lexend, anil, cards de indicador) e declara período, recorte, autoria, regras de cálculo e paginação. |
 
 ## Critérios de aceite (seção 9)
 

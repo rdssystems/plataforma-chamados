@@ -71,23 +71,7 @@ class RelatorioView(AdminRequiredMixin, TemplateView):
             prioridade=prioridade
         )
 
-        if exportar == 'excel':
-            excel_file = gerar_relatorio_excel(dados_relatorio)
-            nome_arquivo = f"relatorio_chamados_{data_inicio.strftime('%Y-%m-%d')}_{data_fim.strftime('%Y-%m-%d')}.xlsx"
-            response = HttpResponse(
-                excel_file.getvalue(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-            response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
-            return response
-
-        if exportar == 'pdf':
-            pdf_bytes = gerar_relatorio_pdf(dados_relatorio, request)
-            nome_arquivo = f"relatorio_chamados_{data_inicio.strftime('%Y-%m-%d')}_{data_fim.strftime('%Y-%m-%d')}.pdf"
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
-            return response
-
+        # O recorte vai no cabeçalho da tela e do PDF: quem lê o arquivo sabe o que foi filtrado.
         nomes = {
             'dev': {d.pk: d.get_full_name() or d.username for d in devs},
             'plataforma': {p.pk: p.nome for p in plataformas},
@@ -101,6 +85,23 @@ class RelatorioView(AdminRequiredMixin, TemplateView):
             recorte.append(f'Tipo: {dict(Chamado.TIPO_CHOICES)[tipo]}')
         if prioridade:
             recorte.append(f'Prioridade: {dict(Chamado.PRIORIDADE_CHOICES)[prioridade]}')
+
+        if exportar == 'excel':
+            excel_file = gerar_relatorio_excel(dados_relatorio)
+            nome_arquivo = f"relatorio_chamados_{data_inicio.strftime('%Y-%m-%d')}_{data_fim.strftime('%Y-%m-%d')}.xlsx"
+            response = HttpResponse(
+                excel_file.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+            return response
+
+        if exportar == 'pdf':
+            pdf_bytes = gerar_relatorio_pdf(dados_relatorio, request, recorte=recorte)
+            nome_arquivo = f"relatorio_chamados_{data_inicio.strftime('%Y-%m-%d')}_{data_fim.strftime('%Y-%m-%d')}.pdf"
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+            return response
 
         context = self.get_context_data(
             dados=dados_relatorio,

@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 import io
+
+from django.conf import settings
 from django.utils import timezone
 from django.db.models import Count, Q, Avg, F
 from django.template.loader import render_to_string
@@ -281,21 +283,59 @@ def gerar_relatorio_excel(dados):
     return output
 
 
-def gerar_relatorio_pdf(dados, request):
-    html_content = render_to_string('relatorios/pdf.html', {'dados': dados}, request=request)
+def _fontes_pdf():
+    """Lexend embutida no PDF (arquivos .ttf em static/fonts/lexend, licença SIL OFL)."""
+    from pathlib import Path
+    from django.contrib.staticfiles import finders
 
-    # 1. Tenta WeasyPrint caso as dependências do sistema estejam instaladas
+    fontes = {}
+    for chave, arquivo in (('regular', 'Lexend-Regular.ttf'), ('negrito', 'Lexend-SemiBold.ttf')):
+        caminho = finders.find(f'fonts/lexend/{arquivo}')
+        fontes[chave] = Path(caminho).resolve().as_uri() if caminho else ''
+    return fontes
+
+
+def _caminho_local(uri, rel=None):
+    """link_callback do xhtml2pdf: converte file:// em caminho do sistema de arquivos."""
+    from urllib.parse import urlparse
+    from urllib.request import url2pathname
+
+    if uri.startswith('file:'):
+        return url2pathname(urlparse(uri).path)
+    return uri
+
+
+def gerar_relatorio_pdf(dados, request, recorte=None):
+    """PDF do relatório no design system da Secretaria.
+
+    Usa o WeasyPrint quando as bibliotecas do sistema existem (imagem Docker de produção)
+    e o xhtml2pdf como alternativa (ex.: Windows sem GTK). O template recebe `motor` para
+    aplicar o que é específico de cada um (rodapé com numeração, gradiente, cantos).
+    """
+    usuario = getattr(request, 'user', None)
+    contexto = {
+        'dados': dados,
+        'recorte': recorte or [],
+        'fontes': _fontes_pdf(),
+        'gerado_em': timezone.localtime(),
+        'gerado_por': (usuario.get_full_name() or usuario.username) if getattr(usuario, 'is_authenticated', False) else '',
+    }
+
     try:
         from weasyprint import HTML
-        pdf_bytes = HTML(string=html_content).write_pdf()
-        return pdf_bytes
-    except Exception:
-        pass
+    except Exception:  # noqa: BLE001 - sem GTK/Pango o import falha com OSError
+        HTML = None
+    if HTML is not None:
+        try:
+            html = render_to_string('relatorios/pdf.html', {**contexto, 'motor': 'weasyprint'}, request=request)
+            return HTML(string=html, base_url=str(settings.BASE_DIR)).write_pdf()
+        except Exception:  # noqa: BLE001 - cai para o xhtml2pdf
+            pass
 
-    # 2. Fallback robusto nativo em Python com xhtml2pdf
     from xhtml2pdf import pisa
+    html = render_to_string('relatorios/pdf.html', {**contexto, 'motor': 'xhtml2pdf'}, request=request)
     pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(html_content, dest=pdf_buffer)
+    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer, encoding='utf-8', link_callback=_caminho_local)
     if not pisa_status.err:
         return pdf_buffer.getvalue()
 

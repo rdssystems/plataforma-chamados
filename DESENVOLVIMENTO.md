@@ -106,6 +106,7 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Relatório: "No prazo" mostra numerador/denominador e "—" sem base; durações em português (`|duracao`); PDF com as cores do padrão.
   - Ficha de adoção (seção 8) e situação dos critérios de aceite (seção 9) em `docs/ficha-adocao-dashboard.md`.
   - Validação: 91 testes (15 novos de critérios de aceite em `config/test_padrao_secretaria.py`); telas conferidas em 375/768/1440 px no Edge headless; contraste WCAG ≥ 4,5:1 em todas as combinações de texto usadas.
+- **PDF do relatório no design system:** faixa anil com período, recorte aplicado e quem gerou; cards de indicador com faixa de cor; tabelas no padrão das telas; marcador de cor das plataformas; durações em português; "No prazo" com numerador/denominador e "—" sem base; nota "Como os números são calculados"; rodapé com "Página X de Y". Fonte Lexend embutida (`static/fonts/lexend/*.ttf`, SIL OFL). O template tem um ramo por motor (`motor`): WeasyPrint (produção, com gradiente e cantos arredondados) e xhtml2pdf (fallback). Antes o PDF não dizia qual filtro tinha sido aplicado. Validado com o xhtml2pdf local e com o WeasyPrint 70 da imagem de produção, num container descartável na VPS.
 ## Pendências / próximos passos
 - [ ] Testar o chat e o novo visual no navegador e em aparelho físico (percurso completo por teclado incluído).
 - [ ] Decidir se o `front-rules.md` (padrão da Secretaria) entra no repositório.

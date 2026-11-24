@@ -169,3 +169,55 @@ class TestRelatoriosExportacaoEViews:
         assert 'relatorio_chamados_' in res['Content-Disposition']
         # Valida cabeçalho padrão de arquivo PDF
         assert res.content.startswith(b'%PDF')
+
+
+def _texto_e_fontes_do_pdf(conteudo):
+    import pypdf
+    leitor = pypdf.PdfReader(io.BytesIO(conteudo))
+    fontes = set()
+    for pagina in leitor.pages:
+        for fonte in (pagina.get('/Resources', {}).get('/Font', {}) or {}).values():
+            fontes.add(str(fonte.get_object().get('/BaseFont')))
+    texto = '\n'.join(p.extract_text() for p in leitor.pages)
+    return texto, fontes
+
+
+@pytest.mark.django_db
+class TestPdfNoDesignSystem:
+    """O PDF segue o padrão visual da Secretaria em qualquer motor (WeasyPrint ou xhtml2pdf)."""
+
+    def test_pdf_usa_lexend_e_mostra_periodo_recorte_e_paginacao(self, client, setup_dados_conhecidos):
+        plat = Plataforma.objects.get(nome='SaaS Principal')
+        client.login(username='admin_relat', password='password123')
+        res = client.get(reverse('relatorios:relatorio'),
+                         {'exportar': 'pdf', 'periodo': 'este_mes', 'plataforma': plat.pk, 'prioridade': 'alta'})
+        assert res.status_code == 200
+        texto, fontes = _texto_e_fontes_do_pdf(res.content)
+        assert any('Lexend' in f for f in fontes), fontes
+        assert 'Gestão de Chamados' in texto
+        assert 'Período:' in texto
+        assert 'Recorte: Plataforma: SaaS Principal · Prioridade: Alta' in texto
+        assert 'Página 1 de' in texto
+        assert 'Como os números são calculados' in texto
+
+    def test_pdf_sem_recorte_declara_equipe_inteira(self, client, setup_dados_conhecidos):
+        client.login(username='admin_relat', password='password123')
+        res = client.get(reverse('relatorios:relatorio'), {'exportar': 'pdf', 'periodo': 'este_mes'})
+        texto, _ = _texto_e_fontes_do_pdf(res.content)
+        assert 'equipe inteira' in texto
+
+    @pytest.mark.parametrize('motor', ['weasyprint', 'xhtml2pdf'])
+    def test_template_renderiza_nos_dois_motores(self, setup_dados_conhecidos, motor):
+        """No Windows o WeasyPrint não roda; renderizar o template garante que o ramo dele não quebrou."""
+        from django.template.loader import render_to_string
+        d = setup_dados_conhecidos
+        dados = calcular_metricas_relatorio(data_inicio=d['dt_inicio'], data_fim=d['dt_fim'])
+        html = render_to_string('relatorios/pdf.html', {
+            'dados': dados, 'recorte': [], 'motor': motor, 'gerado_em': timezone.localtime(),
+            'gerado_por': 'Teste', 'fontes': {'regular': 'file:///r.ttf', 'negrito': 'file:///b.ttf'},
+        })
+        assert 'Indicadores do período' in html
+        if motor == 'weasyprint':
+            assert 'counter(pages)' in html and '-pdf-frame-content' not in html
+        else:
+            assert '-pdf-frame-content' in html and 'counter(pages)' not in html

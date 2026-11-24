@@ -1,218 +1,239 @@
-<!DOCTYPE html>
-<html>
+{% load consulta %}<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-    <meta charset="utf-8">
-    <title>Relatório de Chamados</title>
-    <style>
-        @page {
-            size: A4 portrait;
-            margin: 1.5cm;
-            @bottom-right {
-                content: "Página " counter(page) " de " counter(pages);
-                font-size: 9pt;
-                color: #5a5e6b;
-            }
+<meta charset="utf-8">
+<title>Relatório de entregas e desempenho · {{ dados.data_inicio|date:"d/m/Y" }} a {{ dados.data_fim|date:"d/m/Y" }}</title>
+{% comment %}
+PDF do relatório no design system da Secretaria (mesmos tokens de static/css/secretaria.css).
+Gerado por WeasyPrint (produção, Docker) ou xhtml2pdf (fallback). Por isso o layout usa só
+tabelas e propriedades que os dois entendem; o que é exclusivo de um motor fica sob `motor`.
+{% endcomment %}
+<style>
+    @font-face { font-family: Lexend; src: url("{{ fontes.regular }}"); }
+    @font-face { font-family: Lexend; src: url("{{ fontes.negrito }}"); font-weight: bold; }
+
+    {% if motor == 'weasyprint' %}
+    @page {
+        size: A4 portrait;
+        margin: 1.4cm 1.4cm 1.8cm 1.4cm;
+        @bottom-left {
+            content: "Gestão de Chamados · Relatório de {{ dados.data_inicio|date:'d/m/Y' }} a {{ dados.data_fim|date:'d/m/Y' }}";
+            font-family: Lexend; font-size: 7.5pt; color: #565a67;
         }
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            color: #1e2230;
-            font-size: 10pt;
-            line-height: 1.4;
+        @bottom-right {
+            content: "Página " counter(page) " de " counter(pages);
+            font-family: Lexend; font-size: 7.5pt; color: #565a67;
         }
-        .header {
-            border-bottom: 2px solid #2b3a8c;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .title {
-            font-size: 18pt;
-            font-weight: bold;
-            color: #1e2230;
-            margin: 0;
-        }
-        .subtitle {
-            font-size: 10pt;
-            color: #5a5e6b;
-            margin-top: 4px;
-        }
-        .section-title {
-            font-size: 12pt;
-            font-weight: bold;
-            color: #1e2230;
-            border-bottom: 1px solid #c8cbd6;
-            padding-bottom: 4px;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        .grid-cards {
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        .card {
-            background-color: #f7f8fb;
-            border: 1px solid #dfe2ec;
-            padding: 8px 12px;
-            text-align: center;
-        }
-        .card-val {
-            font-size: 16pt;
-            font-weight: bold;
-            color: #2b3a8c;
-        }
-        .card-lbl {
-            font-size: 8pt;
-            text-transform: uppercase;
-            color: #5a5e6b;
-            font-weight: bold;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-            font-size: 9pt;
-        }
-        th {
-            background-color: #1e2230;
-            color: #ffffff;
-            font-weight: bold;
-            text-align: left;
-            padding: 6px 8px;
-        }
-        td {
-            padding: 6px 8px;
-            border-bottom: 1px solid #dfe2ec;
-        }
-        tr:nth-child(even) td {
-            background-color: #f7f8fb;
-        }
-        .footer {
-            margin-top: 30px;
-            font-size: 8pt;
-            color: #7a7f8c;
-            text-align: center;
-            border-top: 1px solid #dfe2ec;
-            padding-top: 10px;
-        }
-    </style>
+    }
+    #rodape { display: none; }
+    .cabecalho { background-image: linear-gradient(115deg, #2b3a8c, #1f2a6b); border-radius: 8pt; }
+    .card { border-radius: 6pt; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    {% else %}
+    @page {
+        size: a4 portrait;
+        margin: 1.4cm 1.4cm 2cm 1.4cm;
+        @frame rodape { -pdf-frame-content: rodape; left: 1.4cm; width: 18.2cm; bottom: 0.7cm; height: 1cm; }
+    }
+    {% endif %}
+
+    body { font-family: Lexend, Helvetica, sans-serif; font-size: 9pt; line-height: 1.45; color: #1e2230; }
+    b, strong { font-weight: bold; }
+
+    /* Cabeçalho (equivalente ao .cabecalho-pagina) */
+    .cabecalho { width: 100%; background-color: #2b3a8c; color: #ffffff; }
+    .cabecalho td { padding: 14pt 16pt; vertical-align: top; color: #ffffff; }
+    .sobretitulo { font-size: 7pt; font-weight: bold; letter-spacing: 1pt; text-transform: uppercase; color: #e4e7f7; }
+    h1 { font-size: 17pt; font-weight: bold; margin: 3pt 0 4pt 0; color: #ffffff; }
+    .cabecalho-linha { font-size: 8.5pt; color: #e4e7f7; }
+    .cabecalho-meta { text-align: right; font-size: 7.5pt; color: #e4e7f7; width: 30%; }
+
+    /* Seções */
+    h2 { font-size: 11pt; font-weight: bold; margin: 16pt 0 2pt 0; color: #1e2230; }
+    .apoio { font-size: 7.5pt; color: #565a67; margin: 0 0 6pt 0; }
+
+    /* Indicadores (equivalente ao .painel-indicador) */
+    .indicadores { width: 100%; }
+    .indicadores td.espaco { width: 2%; border: none; padding: 0; }
+    .card { width: 32%; background-color: #ffffff; border: 0.75pt solid #dfe2ec; border-top: 3pt solid #2b3a8c; padding: 7pt 9pt; vertical-align: top; }
+    .card.sucesso { border-top-color: #2e7a4c; }
+    .card.critico { border-top-color: #c8471f; }
+    .card.atencao { border-top-color: #f2b705; }
+    .rotulo { font-size: 6.5pt; font-weight: bold; letter-spacing: 0.6pt; text-transform: uppercase; color: #565a67; }
+    .valor { font-size: 17pt; font-weight: bold; color: #1e2230; line-height: 1.2; }
+    .valor-texto { font-size: 12pt; font-weight: bold; color: #1e2230; line-height: 1.5; }
+    .unidade { font-size: 8pt; font-weight: normal; color: #565a67; }
+    .detalhe { font-size: 7pt; color: #565a67; }
+    .linha-cards { height: 7pt; }
+
+    /* Tabelas (equivalente a .table + .table-light) */
+    table.dados { width: 100%; border-collapse: collapse; }
+    table.dados th { background-color: #f7f8fb; color: #565a67; font-size: 6.5pt; font-weight: bold; letter-spacing: 0.3pt;
+                     text-transform: uppercase; text-align: left; padding: 5pt 5pt; border-top: 0.75pt solid #dfe2ec; border-bottom: 0.75pt solid #dfe2ec; }
+    table.dados td { font-size: 8pt; padding: 5pt 6pt; border-bottom: 0.75pt solid #dfe2ec; vertical-align: top; }
+    table.dados .num { text-align: right; }
+    .codigo { font-weight: bold; color: #2b3a8c; }
+    .secundario { color: #565a67; font-size: 7.5pt; }
+    .vazio { color: #565a67; text-align: center; padding: 10pt; }
+    .marcador { font-size: 6pt; }
+
+    .duas-colunas { width: 100%; }
+    .duas-colunas { margin-top: 6pt; }
+    .duas-colunas td.coluna { width: 49%; vertical-align: top; padding: 8pt 0 0 0; }
+    .duas-colunas td.espaco { width: 2%; padding: 0; }
+
+    .notas { margin-top: 14pt; padding: 8pt 10pt; background-color: #f7f8fb; border: 0.75pt solid #dfe2ec; font-size: 7pt; color: #565a67; }
+    .notas b { color: #1e2230; }
+    #rodape { font-size: 7.5pt; color: #565a67; }
+</style>
 </head>
 <body>
-    <div class="header">
-        <h1 class="title">Relatório de Gestão de Chamados</h1>
-        <div class="subtitle">
-            Período: <strong>{{ dados.data_inicio|date:"d/m/Y" }}</strong> a <strong>{{ dados.data_fim|date:"d/m/Y" }}</strong>
-        </div>
-    </div>
 
-    <!-- Indicadores Principais -->
-    <div class="section-title">Indicadores Consolidados</div>
-    <table class="grid-cards">
+<table class="cabecalho">
+    <tr>
+        <td>
+            <div class="sobretitulo">Relatório de entregas e desempenho</div>
+            <h1>Gestão de Chamados</h1>
+            <div class="cabecalho-linha">Período: <b>{{ dados.data_inicio|date:"d/m/Y" }}</b> a <b>{{ dados.data_fim|date:"d/m/Y" }}</b></div>
+            <div class="cabecalho-linha">Recorte: {% if recorte %}{{ recorte|join:" · " }}{% else %}equipe inteira, todas as plataformas, tipos e prioridades{% endif %}</div>
+        </td>
+        <td class="cabecalho-meta">
+            Gerado em {{ gerado_em|date:"d/m/Y \à\s H:i" }}<br>
+            {% if gerado_por %}por {{ gerado_por }}{% endif %}
+        </td>
+    </tr>
+</table>
+
+<h2>Indicadores do período</h2>
+<p class="apoio">Contagens em chamados. As regras de cálculo estão no fim do documento.</p>
+<table class="indicadores">
+    <tr>
+        <td class="card">
+            <div class="rotulo">Abertos</div>
+            <div class="valor">{{ dados.total_abertos }} <span class="unidade">chamado{{ dados.total_abertos|pluralize }}</span></div>
+            <div class="detalhe">Criados no período</div>
+        </td>
+        <td class="espaco"></td>
+        <td class="card sucesso">
+            <div class="rotulo">Concluídos</div>
+            <div class="valor">{{ dados.total_concluidos }} <span class="unidade">chamado{{ dados.total_concluidos|pluralize }}</span></div>
+            <div class="detalhe">Entregues no período</div>
+        </td>
+        <td class="espaco"></td>
+        <td class="card">
+            <div class="rotulo">Tempo médio</div>
+            <div class="valor-texto">{{ dados.tempo_medio|duracao|default:"—" }}</div>
+            <div class="detalhe">{% if dados.tempo_medio %}Da abertura à conclusão{% else %}Nenhum concluído no período{% endif %}</div>
+        </td>
+    </tr>
+    <tr><td class="linha-cards" colspan="5"></td></tr>
+    <tr>
+        <td class="card">
+            <div class="rotulo">No prazo</div>
+            {% if dados.prazo_denominador %}
+            <div class="valor">{{ dados.taxa_no_prazo }}%</div>
+            <div class="detalhe">{{ dados.prazo_numerador }} de {{ dados.prazo_denominador }} concluídos com prazo</div>
+            {% else %}
+            <div class="valor">—</div>
+            <div class="detalhe">Nenhum concluído com prazo no período</div>
+            {% endif %}
+        </td>
+        <td class="espaco"></td>
+        <td class="card critico">
+            <div class="rotulo">Atrasados no fim</div>
+            <div class="valor">{{ dados.atrasados_fim_periodo }} <span class="unidade">chamado{{ dados.atrasados_fim_periodo|pluralize }}</span></div>
+            <div class="detalhe">Prazo vencido em {{ dados.data_fim|date:"d/m/Y" }} sem entrega</div>
+        </td>
+        <td class="espaco"></td>
+        <td class="card atencao">
+            <div class="rotulo">Backlog</div>
+            <div class="valor">{{ dados.backlog }} <span class="unidade">chamado{{ dados.backlog|pluralize }}</span></div>
+            <div class="detalhe">Pendentes no fim do período</div>
+        </td>
+    </tr>
+</table>
+
+<table class="duas-colunas">
+    <tr>
+        <td class="coluna">
+            <h2>Desempenho por desenvolvedor</h2>
+            <table class="dados" repeat="1">
+                <thead><tr><th style="width: 38%">Desenvolvedor</th><th class="num" style="width: 20%">Concluídos</th><th style="width: 24%">Tempo médio</th><th class="num" style="width: 18%">No prazo</th></tr></thead>
+                <tbody>
+                {% for d in dados.quebra_devs %}
+                    <tr>
+                        <td><b>{{ d.dev.get_full_name|default:d.dev.username }}</b></td>
+                        <td class="num">{{ d.concluidos }}</td>
+                        <td>{{ d.tempo_medio|duracao|default:"—" }}</td>
+                        <td class="num">{% if d.concluidos %}{{ d.taxa_no_prazo }}%{% else %}—{% endif %}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="vazio">Nenhum desenvolvedor com entregas no período.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </td>
+        <td class="espaco"></td>
+        <td class="coluna">
+            <h2>Desempenho por plataforma</h2>
+            <table class="dados" repeat="1">
+                <thead><tr><th style="width: 40%">Plataforma</th><th class="num" style="width: 18%">Abertos</th><th class="num" style="width: 24%">Concluídos</th><th class="num" style="width: 18%">Ativos</th></tr></thead>
+                <tbody>
+                {% for p in dados.quebra_plataformas %}
+                    <tr>
+                        <td><span class="marcador" style="background-color: {{ p.plataforma.cor }}; color: {{ p.plataforma.cor }};">&nbsp;&nbsp;&nbsp;</span>&nbsp;{{ p.plataforma.nome }}</td>
+                        <td class="num">{{ p.abertos }}</td>
+                        <td class="num">{{ p.concluidos }}</td>
+                        <td class="num">{{ p.ativos }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="vazio">Nenhuma plataforma com movimento no período.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<h2>Chamados concluídos no período</h2>
+{% with total=dados.lista_detalhada|length %}<p class="apoio">{{ total }} chamado{{ total|pluralize }}, do mais recente para o mais antigo.</p>{% endwith %}
+<table class="dados" repeat="1">
+    <thead>
+        <tr><th style="width: 30%">Chamado</th><th style="width: 14%">Plataforma</th><th style="width: 14%">Responsável</th><th style="width: 10.5%">Criado</th><th style="width: 10.5%">Concluído</th><th style="width: 10.5%">Prazo</th><th class="num" style="width: 10.5%">Resolução</th></tr>
+    </thead>
+    <tbody>
+    {% for c in dados.lista_detalhada %}
         <tr>
-            <td class="card">
-                <div class="card-val">{{ dados.total_abertos }}</div>
-                <div class="card-lbl">Abertos</div>
-            </td>
-            <td class="card">
-                <div class="card-val" style="color: #2e7a4c;">{{ dados.total_concluidos }}</div>
-                <div class="card-lbl">Concluídos</div>
-            </td>
-            <td class="card">
-                <div class="card-val" style="color: #2b3a8c;">{{ dados.taxa_no_prazo }}%</div>
-                <div class="card-lbl">No Prazo</div>
-            </td>
-            <td class="card">
-                <div class="card-val" style="color: #c8471f;">{{ dados.atrasados_fim_periodo }}</div>
-                <div class="card-lbl">Atrasados no Fim</div>
-            </td>
-            <td class="card">
-                <div class="card-val" style="color: #565a67;">{{ dados.backlog }}</div>
-                <div class="card-lbl">Backlog</div>
-            </td>
+            <td><span class="codigo">{{ c.codigo }}</span><br>{{ c.titulo }}</td>
+            <td><span class="marcador" style="background-color: {{ c.plataforma.cor }}; color: {{ c.plataforma.cor }};">&nbsp;&nbsp;&nbsp;</span>&nbsp;{{ c.plataforma.nome }}</td>
+            <td>{% if c.responsavel %}{{ c.responsavel.get_full_name|default:c.responsavel.username }}{% else %}<span class="secundario">Sem responsável</span>{% endif %}</td>
+            <td>{{ c.criado_em|date:"d/m/Y" }}</td>
+            <td>{{ c.concluido_em|date:"d/m/Y" }}</td>
+            <td>{{ c.prazo|date:"d/m/Y"|default:"—" }}</td>
+            <td class="num">{{ c.tempo_resolucao|duracao|default:"—" }}</td>
         </tr>
-    </table>
+    {% empty %}
+        <tr><td colspan="7" class="vazio">Nenhum chamado concluído no período com o recorte aplicado.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
 
-    <!-- Tabela por Dev -->
-    <div class="section-title">Desempenho por Desenvolvedor</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Desenvolvedor</th>
-                <th>Concluídos</th>
-                <th>Tempo Médio</th>
-                <th>% no Prazo</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in dados.quebra_devs %}
-            <tr>
-                <td><strong>{{ d.dev.get_full_name|default:d.dev.username }}</strong></td>
-                <td>{{ d.concluidos }}</td>
-                <td>{{ d.tempo_medio|default:"—" }}</td>
-                <td>{{ d.taxa_no_prazo }}%</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">Nenhum dado encontrado.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="notas">
+    <b>Como os números são calculados.</b>
+    <b>Abertos</b>: criados no período. <b>Concluídos</b>: concluídos no período.
+    <b>Tempo médio</b>: média do tempo entre abertura e conclusão dos concluídos no período.
+    <b>No prazo</b>: concluídos até a data do prazo, dividido pelos concluídos no período que tinham prazo; sem nenhum com prazo, aparece "—".
+    <b>Atrasados no fim</b>: prazo anterior à data final e sem conclusão até ela (cancelados não contam).
+    <b>Backlog</b>: criados até a data final e ainda não concluídos nela (cancelados não contam).
+    Todos os números respeitam o recorte indicado no cabeçalho.
+</div>
 
-    <!-- Tabela por Plataforma -->
-    <div class="section-title">Desempenho por Plataforma</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Plataforma</th>
-                <th>Abertos no Período</th>
-                <th>Concluídos no Período</th>
-                <th>Ativos Atuais</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in dados.quebra_plataformas %}
-            <tr>
-                <td><strong>{{ p.plataforma.nome }}</strong></td>
-                <td>{{ p.abertos }}</td>
-                <td>{{ p.concluidos }}</td>
-                <td>{{ p.ativos }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4">Nenhum dado encontrado.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <!-- Lista Detalhada -->
-    <div class="section-title">Chamados Concluídos no Período</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Título</th>
-                <th>Plataforma</th>
-                <th>Dev</th>
-                <th>Criado em</th>
-                <th>Concluído em</th>
-                <th>Tempo Resolução</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in dados.lista_detalhada %}
-            <tr>
-                <td><strong>{{ c.codigo }}</strong></td>
-                <td>{{ c.titulo }}</td>
-                <td>{{ c.plataforma.nome }}</td>
-                <td>{{ c.responsavel.username|default:"Sem dev" }}</td>
-                <td>{{ c.criado_em|date:"d/m/Y" }}</td>
-                <td>{{ c.concluido_em|date:"d/m/Y" }}</td>
-                <td>{{ c.tempo_resolucao|default:"—" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7">Nenhum chamado concluído no período.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="footer">
-        Gerado pelo Sistema de Gestão de Chamados em {{ "now"|date:"d/m/Y H:i" }}
-    </div>
+<div id="rodape">
+    <table style="width: 100%"><tr>
+        <td>Gestão de Chamados · Relatório de {{ dados.data_inicio|date:"d/m/Y" }} a {{ dados.data_fim|date:"d/m/Y" }}</td>
+        <td style="text-align: right">Página <pdf:pagenumber> de <pdf:pagecount></td>
+    </tr></table>
+</div>
 </body>
 </html>
