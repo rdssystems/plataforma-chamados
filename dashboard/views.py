@@ -12,6 +12,21 @@ from plataformas.models import Plataforma
 
 Usuario = get_user_model()
 
+SEMANAS_NO_GRAFICO = 12
+
+
+def _totais_por_semana(qs_semanal):
+    """{data da segunda-feira: total} a partir de um queryset anotado com TruncWeek."""
+    totais = {}
+    for item in qs_semanal:
+        semana = item['semana']
+        if semana is None:
+            continue
+        if timezone.is_aware(semana):
+            semana = timezone.localtime(semana)
+        totais[semana.date()] = item['total']
+    return totais
+
 
 class DashboardIndexView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
@@ -73,7 +88,8 @@ class DashboardGraficosJsonView(LoginRequiredMixin, View):
         user = request.user
         hoje = timezone.localdate()
         inicio_mes = hoje.replace(day=1)
-        doze_semanas_atras = timezone.now() - timedelta(weeks=12)
+        # 12 semanas completas (segunda a domingo), incluindo a atual.
+        semanas = [hoje - timedelta(days=hoje.weekday(), weeks=n) for n in range(SEMANAS_NO_GRAFICO - 1, -1, -1)]
 
         # Base do queryset
         if getattr(user, 'is_admin', False):
@@ -86,7 +102,7 @@ class DashboardGraficosJsonView(LoginRequiredMixin, View):
 
         # 1. Gráfico Linha: abertos vs concluídos por semana (últimas 12 semanas) com TruncWeek
         abertos_semana = qs.filter(
-            criado_em__gte=doze_semanas_atras
+            criado_em__date__gte=semanas[0]
         ).annotate(
             semana=TruncWeek('criado_em')
         ).values('semana').annotate(
@@ -95,25 +111,22 @@ class DashboardGraficosJsonView(LoginRequiredMixin, View):
 
         concluidos_semana = qs.filter(
             status=Chamado.STATUS_CONCLUIDO,
-            concluido_em__gte=doze_semanas_atras
+            concluido_em__date__gte=semanas[0]
         ).annotate(
             semana=TruncWeek('concluido_em')
         ).values('semana').annotate(
             total=Count('id')
         ).order_by('semana')
 
-        mapa_abertos = {item['semana'].strftime('%d/%m'): item['total'] for item in abertos_semana if item['semana']}
-        mapa_concluidos = {item['semana'].strftime('%d/%m'): item['total'] for item in concluidos_semana if item['semana']}
+        mapa_abertos = _totais_por_semana(abertos_semana)
+        mapa_concluidos = _totais_por_semana(concluidos_semana)
 
-        # Lista ordenada de semanas
-        todas_semanas = sorted(list(set(list(mapa_abertos.keys()) + list(mapa_concluidos.keys()))))
-        if not todas_semanas:
-            todas_semanas = [hoje.strftime('%d/%m')]
-
+        # Semanas em ordem cronológica (não alfabética) e com zero quando não houve chamados.
         linha_dados = {
-            'labels': todas_semanas,
-            'abertos': [mapa_abertos.get(sem, 0) for sem in todas_semanas],
-            'concluidos': [mapa_concluidos.get(sem, 0) for sem in todas_semanas],
+            'labels': [s.strftime('%d/%m') for s in semanas],
+            'datas': [s.isoformat() for s in semanas],
+            'abertos': [mapa_abertos.get(s, 0) for s in semanas],
+            'concluidos': [mapa_concluidos.get(s, 0) for s in semanas],
         }
 
         # 2. Gráfico Barras: chamados ativos por plataforma
@@ -164,7 +177,6 @@ class DashboardGraficosJsonView(LoginRequiredMixin, View):
                 mapa_prioridades.get(Chamado.PRIORIDADE_MEDIA, 0),
                 mapa_prioridades.get(Chamado.PRIORIDADE_BAIXA, 0),
             ],
-            'cores': ['#EF4444', '#F97316', '#EAB308', '#94A3B8']
         }
 
         return JsonResponse({

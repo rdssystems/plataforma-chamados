@@ -1,0 +1,19 @@
+{% comment %}
+Card de gráfico do dashboard (desenhado por static/js/dashboard_graficos.js).
+Parâmetros: tipo (linha | plataformas | devs | prioridades), titulo, subtitulo, classes.
+{% endcomment %}
+<figure data-grafico="{{ tipo }}" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm min-w-0 {{ classes }}">
+    <div class="flex items-start justify-between gap-3 mb-3">
+        <figcaption class="min-w-0">
+            <h4 class="text-sm font-bold text-slate-800">{{ titulo }}</h4>
+            <p class="text-xs text-slate-500 mt-0.5" data-subtitulo>{{ subtitulo }}</p>
+        </figcaption>
+        <button type="button" data-alternar-tabela aria-pressed="false"
+                class="flex-shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 transition">
+            Ver tabela
+        </button>
+    </div>
+    <div data-area-grafico class="w-full" style="height: 256px"></div>
+    <div data-area-tabela class="hidden overflow-x-auto"></div>
+    <p data-estado class="hidden py-10 text-center text-xs text-slate-400 italic"></p>
+</figure>

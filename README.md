@@ -8,7 +8,7 @@ Sistema web completo de triagem, acompanhamento e relatórios de chamados técni
 
 - **Backend:** Python 3.12+, Django 5.x
 - **Banco de Dados:** SQLite (padrão de desenvolvimento) com suporte a PostgreSQL via `DATABASE_URL` (dj-database-url / psycopg2)
-- **Frontend Interativo:** Templates Django server-side, [Tailwind CSS](https://tailwindcss.com) (CDN), [HTMX](https://htmx.org) (comentários reativos e updates sem reload), [SortableJS](https://sortablejs.github.io/Sortable/) (Kanban drag-and-drop) e [Chart.js](https://www.chartjs.org/) (gráficos interativos de evolução semanal, plataformas, desenvolvedores e prioridades).
+- **Frontend Interativo:** Templates Django server-side, [Tailwind CSS](https://tailwindcss.com) (CDN), [HTMX](https://htmx.org) (comentários reativos e updates sem reload), [SortableJS](https://sortablejs.github.io/Sortable/) (Kanban drag-and-drop) e [Apache ECharts](https://echarts.apache.org/) 6.1 (gráficos interativos do dashboard: evolução semanal, plataformas, desenvolvedores e prioridades, com tooltip, versão em tabela e descrição para leitores de tela).
 - **Exportações:** [openpyxl](https://openpyxl.readthedocs.io/) (relatórios Excel com abas e formatação profissional) e [xhtml2pdf / WeasyPrint](https://xhtml2pdf.readthedocs.io/) (relatórios gerenciais em PDF).
 - **Auditoria:** [django-simple-history](https://django-simple-history.readthedocs.io/) e histórico centralizado de mudanças de status.
 - **Tempo real:** [Django Channels](https://channels.readthedocs.io/) (WebSocket) servido pelo [Daphne](https://github.com/django/daphne), com Redis em produção, para o chat entre usuários, a lista de quem está online e as notificações instantâneas.
@@ -153,7 +153,7 @@ pytest -v
 ├── accounts/           # Modelo Usuario customizado, auth, CRUD de equipe e middleware
 ├── plataformas/        # Cadastro e gestão de plataformas/sistemas com cores
 ├── chamados/           # Chamados, transições de status (services.py), kanban, comentários e anexos
-├── dashboard/          # Cards de indicadores, endpoint de gráficos Chart.js e listas de atenção
+├── dashboard/          # Cards de indicadores, endpoint dos gráficos (ECharts em static/js/dashboard_graficos.js) e listas de atenção
 ├── relatorios/         # Serviço unificado de métricas (services.py) e exportadores (Excel e PDF)
 ├── notificacoes/       # Central e sino de notificações no topo (com aviso em tempo real)
 ├── chat/               # Chat direto entre usuários, presença online e WebSocket (consumers.py)

@@ -85,6 +85,14 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Criado `atualizar.sh` (deploy guiado com backup, verificação de saúde e instruções de rollback) e `.gitattributes` (força LF em `.sh`, Dockerfile e Caddyfile).
   - `.dockerignore` passou a excluir `*.md`, `atualizar.sh`, compose e Caddyfile: commits só de documentação não geram imagem nova nem reiniciam o app.
 
+### 2026-11-24
+- Banco local (`db.sqlite3`) estava sem a migração do chat (`no such table: chat_participante` ao logar). Aplicado `migrate`; cópia anterior em `db-antes-chat-20261124-123628.sqlite3` (ignorada pelo git).
+- **Gráficos do dashboard migrados de Chart.js para Apache ECharts 6.1.0** (CDN com versão fixa e SRI + tradução pt-BR), código em `static/js/dashboard_graficos.js` e card reutilizável em `templates/dashboard/partials/grafico_card.html`.
+  - Formatos: linha (abertos × concluídos, 2 séries com legenda, rótulo no fim da linha e crosshair); barras horizontais ordenadas para plataformas e devs (cor única; a cor de cada plataforma vira um marcador ao lado do nome); prioridade em barras na ordem natural com rampa ordinal de um tom (mais escuro = mais urgente) no lugar da rosca.
+  - Paleta validada com o validador de dataviz contra o fundo branco dos cards (separação para daltonismo e contraste). Botão "Ver tabela" em cada gráfico, estados de vazio/erro, descrição para leitores de tela, nomes de usuários escapados nos tooltips.
+  - Corrigida a série semanal: antes as semanas eram ordenadas como texto `dd/mm` (quebrava na virada do mês) e semanas sem chamados sumiam; agora são sempre 12 semanas em ordem cronológica com zeros. O JSON ganhou `linha.datas` e perdeu `prioridades.cores`.
+  - Validação: 4 testes novos; páginas renderizadas no Edge headless (desktop, celular a 390px, vazios, tooltips e tabelas) e conferidas visualmente.
+
 ## Pendências / próximos passos
 - [ ] Testar o chat no navegador com dois usuários reais (interface não foi vista em navegador, só validada via HTTP/WebSocket).
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).

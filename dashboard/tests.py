@@ -132,3 +132,54 @@ class TestDashboard:
             res = client.get(reverse('dashboard:index'))
             assert res.status_code == 200
 
+
+
+@pytest.mark.django_db
+class TestGraficosECharts:
+    def _linha(self, client):
+        client.login(username='admin_dash', password='password123')
+        return client.get(reverse('dashboard:dados_graficos')).json()['linha']
+
+    def test_serie_semanal_tem_12_semanas_consecutivas_em_ordem_cronologica(self, client, setup_dashboard):
+        from datetime import date
+        linha = self._linha(client)
+        assert len(linha['labels']) == len(linha['datas']) == len(linha['abertos']) == len(linha['concluidos']) == 12
+        datas = [date.fromisoformat(d) for d in linha['datas']]
+        # Ordem de calendário, não alfabética de "dd/mm" (que quebrava na virada do mês).
+        assert all(d.weekday() == 0 for d in datas)
+        assert all((b - a).days == 7 for a, b in zip(datas, datas[1:]))
+        hoje = timezone.localdate()
+        assert datas[-1] == hoje - timedelta(days=hoje.weekday())
+        assert linha['labels'] == [d.strftime('%d/%m') for d in datas]
+
+    def test_chamado_antigo_cai_na_semana_certa_e_semanas_vazias_valem_zero(self, client, setup_dashboard):
+        admin = Usuario.objects.get(username='admin_dash')
+        antigo = Chamado.objects.create(
+            titulo='Antigo', descricao='D', plataforma=Plataforma.objects.first(),
+            criado_por=admin, status=Chamado.STATUS_ABERTO,
+        )
+        quando = timezone.now() - timedelta(weeks=5)
+        Chamado.objects.filter(pk=antigo.pk).update(criado_em=quando)
+
+        linha = self._linha(client)
+        dia = timezone.localtime(quando).date()
+        indice = linha['datas'].index((dia - timedelta(days=dia.weekday())).isoformat())
+        assert linha['abertos'][indice] == 1
+        assert sum(linha['abertos']) == Chamado.objects.count()
+        assert linha['abertos'].count(0) >= 9  # semanas sem chamados aparecem como zero
+
+    def test_pagina_carrega_echarts_com_versao_fixa_e_integridade(self, client, setup_dashboard):
+        client.login(username='admin_dash', password='password123')
+        html = client.get(reverse('dashboard:index')).content.decode()
+        assert 'echarts@6.1.0/dist/echarts.min.js' in html
+        assert 'integrity="sha384-' in html
+        assert 'chart.js' not in html.lower()
+        assert 'js/dashboard_graficos.js' in html
+        for tipo in ('linha', 'plataformas', 'devs', 'prioridades'):
+            assert f'data-grafico="{tipo}"' in html
+
+    def test_dev_nao_ve_grafico_por_desenvolvedor(self, client, setup_dashboard):
+        client.login(username='dev_clara', password='password123')
+        html = client.get(reverse('dashboard:index')).content.decode()
+        assert 'data-grafico="linha"' in html
+        assert 'data-grafico="devs"' not in html

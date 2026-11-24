@@ -1,11 +1,17 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard — Gestão de Chamados{% endblock %}
 {% block header_title %}Dashboard Operacional{% endblock %}
 
 {% block extra_head %}
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Apache ECharts (versão fixa + verificação de integridade) e tradução pt-BR -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"
+        integrity="sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD"
+        crossorigin="anonymous" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/i18n/langPT-br.js"
+        integrity="sha384-BzpAljJJWmCf18g4qLtVKAsjYOIIn20GysBEiqLnXJrhyOW/rLXJStT3WQGm0rwu"
+        crossorigin="anonymous" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -103,53 +109,15 @@
         {% endif %}
     </div>
 
-    <!-- Gráficos (Chart.js) -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Gráfico 1: Linha (Abertos x Concluídos por semana) -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-blue-600 mr-2"></span>
-                Chamados Abertos × Concluídos por Semana (Últimas 12 Semanas)
-            </h4>
-            <div class="relative h-64">
-                <canvas id="chartLinha"></canvas>
-            </div>
-        </div>
-
-        <!-- Gráfico 2: Barras (Ativos por Plataforma) -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-emerald-600 mr-2"></span>
-                Chamados Ativos por Plataforma
-            </h4>
-            <div class="relative h-64">
-                <canvas id="chartPlataformas"></canvas>
-            </div>
-        </div>
-
-        <!-- Gráfico 3: Barras (Concluídos por Dev no mês - Só Admin) -->
+    <!-- Gráficos (Apache ECharts, desenhados por static/js/dashboard_graficos.js) -->
+    <div id="dashboard-graficos" class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+         data-url="{% url 'dashboard:dados_graficos' %}{% if dev_selecionado %}?dev={{ dev_selecionado|urlencode }}{% endif %}">
+        {% include 'dashboard/partials/grafico_card.html' with tipo='linha' titulo='Chamados abertos × concluídos por semana' subtitulo='Últimas 12 semanas' %}
+        {% include 'dashboard/partials/grafico_card.html' with tipo='plataformas' titulo='Chamados ativos por plataforma' subtitulo='Da plataforma com mais chamados para a com menos' %}
         {% if user.is_admin %}
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-purple-600 mr-2"></span>
-                Concluídos por Desenvolvedor (Mês Corrente)
-            </h4>
-            <div class="relative h-64">
-                <canvas id="chartDevs"></canvas>
-            </div>
-        </div>
+        {% include 'dashboard/partials/grafico_card.html' with tipo='devs' titulo='Concluídos por desenvolvedor' subtitulo='Mês corrente' %}
         {% endif %}
-
-        <!-- Gráfico 4: Rosca (Distribuição por Prioridade) -->
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm {% if not user.is_admin %}lg:col-span-2 max-w-xl mx-auto w-full{% endif %}">
-            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-amber-600 mr-2"></span>
-                Distribuição dos Ativos por Prioridade
-            </h4>
-            <div class="relative h-64">
-                <canvas id="chartPrioridades"></canvas>
-            </div>
-        </div>
+        {% include 'dashboard/partials/grafico_card.html' with tipo='prioridades' titulo='Chamados ativos por prioridade' subtitulo='' classes=user.is_admin|yesno:',lg:col-span-2' %}
     </div>
 
     <!-- Listas Rápidas do Dashboard -->
@@ -240,121 +208,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const urlDados = "{% url 'dashboard:dados_graficos' %}{% if dev_selecionado %}?dev={{ dev_selecionado }}{% endif %}";
-
-        fetch(urlDados)
-            .then(res => res.json())
-            .then(data => {
-                // 1. Gráfico Linha
-                const ctxLinha = document.getElementById('chartLinha');
-                if (ctxLinha) {
-                    new Chart(ctxLinha, {
-                        type: 'line',
-                        data: {
-                            labels: data.linha.labels,
-                            datasets: [
-                                {
-                                    label: 'Abertos',
-                                    data: data.linha.abertos,
-                                    borderColor: '#3B82F6',
-                                    backgroundColor: '#3B82F615',
-                                    tension: 0.3,
-                                    fill: true
-                                },
-                                {
-                                    label: 'Concluídos',
-                                    data: data.linha.concluidos,
-                                    borderColor: '#10B981',
-                                    backgroundColor: '#10B98115',
-                                    tension: 0.3,
-                                    fill: true
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { beginAtZero: true, ticks: { precision: 0 } }
-                            }
-                        }
-                    });
-                }
-
-                // 2. Gráfico Barras: Plataformas
-                const ctxPlat = document.getElementById('chartPlataformas');
-                if (ctxPlat) {
-                    new Chart(ctxPlat, {
-                        type: 'bar',
-                        data: {
-                            labels: data.plataformas.labels,
-                            datasets: [{
-                                label: 'Chamados Ativos',
-                                data: data.plataformas.totais,
-                                backgroundColor: data.plataformas.cores,
-                                borderRadius: 6
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { beginAtZero: true, ticks: { precision: 0 } }
-                            }
-                        }
-                    });
-                }
-
-                // 3. Gráfico Barras: Devs (se existir)
-                const ctxDevs = document.getElementById('chartDevs');
-                if (ctxDevs) {
-                    new Chart(ctxDevs, {
-                        type: 'bar',
-                        data: {
-                            labels: data.devs.labels,
-                            datasets: [{
-                                label: 'Concluídos no Mês',
-                                data: data.devs.totais,
-                                backgroundColor: '#8B5CF6',
-                                borderRadius: 6
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: { beginAtZero: true, ticks: { precision: 0 } }
-                            }
-                        }
-                    });
-                }
-
-                // 4. Gráfico Rosca: Prioridades
-                const ctxPrio = document.getElementById('chartPrioridades');
-                if (ctxPrio) {
-                    new Chart(ctxPrio, {
-                        type: 'doughnut',
-                        data: {
-                            labels: data.prioridades.labels,
-                            datasets: [{
-                                data: data.prioridades.totais,
-                                backgroundColor: data.prioridades.cores,
-                                borderWidth: 2
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { position: 'bottom' }
-                            }
-                        }
-                    });
-                }
-            })
-            .catch(err => console.error("Erro ao carregar dados dos gráficos:", err));
-    });
-</script>
+<script src="{% static 'js/dashboard_graficos.js' %}" defer></script>
 {% endblock %}
