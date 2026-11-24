@@ -172,3 +172,24 @@ class TestNotificacoes:
         res = client.post(reverse('notificacoes:marcar_todas'))
         assert res.status_code == 302
         assert Notificacao.objects.filter(destinatario=dev_1, lida=False).count() == 0
+
+
+@pytest.mark.django_db
+def test_linha_do_tempo_escapa_nome_de_anexo_e_de_usuario(client, plataforma, admin_user, dev_1):
+    """Nome de arquivo e nome de pessoa são dados do usuário: nunca podem virar HTML na página."""
+    dev_1.first_name = '<b>Alice</b>'
+    dev_1.save()
+    chamado = Chamado.objects.create(
+        titulo='XSS', descricao='D', plataforma=plataforma, criado_por=admin_user, responsavel=dev_1,
+    )
+    client.login(username='dev_alice', password='password123')
+    malicioso = '<img src=x onerror=alert(1)>.png'
+    client.post(reverse('chamados:anexo_upload', kwargs={'pk': chamado.pk}),
+                {'arquivo': SimpleUploadedFile(malicioso, b'fake', content_type='image/png')})
+    client.post(reverse('chamados:comentario_create', kwargs={'pk': chamado.pk}), {'texto': 'oi'})
+    assert Anexo.objects.filter(chamado=chamado, nome_original=malicioso).exists()
+
+    html = client.get(reverse('chamados:chamado_detail', kwargs={'pk': chamado.pk})).content.decode()
+    assert '<img src=x onerror=alert(1)>' not in html
+    assert '&lt;img src=x onerror=alert(1)&gt;' in html
+    assert '<b>Alice</b>' not in html

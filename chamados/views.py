@@ -151,7 +151,7 @@ class ChamadoDetailView(LoginRequiredMixin, DetailView):
                 'tipo': 'mudanca_status',
                 'data': m.alterado_em,
                 'autor': m.alterado_por,
-                'titulo': f"Status alterado: {m.get_de_status_display()} &rarr; {m.get_para_status_display()}",
+                'titulo': f"Status alterado: {m.get_de_status_display()} → {m.get_para_status_display()}",
                 'motivo': m.comentario_motivo,
                 'descricao': f"Alterado por {m.alterado_por.get_full_name() or m.alterado_por.username}"
             })
