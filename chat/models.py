@@ -44,7 +44,10 @@ class Participante(models.Model):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='participacoes_chat'
     )
-    lida_ate = models.DateTimeField(null=True, blank=True)
+    lida_ate = models.DateTimeField(null=True, blank=True, help_text='Quando a conversa foi lida pela última vez.')
+    # A contagem de não lidas usa o id (sempre crescente), não o horário: duas mensagens
+    # podem ter o mesmo horário quando o relógio tem pouca precisão (ex.: Windows).
+    ultima_lida_id = models.PositiveBigIntegerField(default=0)
 
     class Meta:
         verbose_name = 'Participante'

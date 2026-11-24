@@ -16,7 +16,7 @@ from plataformas.models import Plataforma
 
 from . import services
 from .consumers import FECHAR_NAO_AUTENTICADO, TempoRealConsumer
-from .models import Conversa, Mensagem, Presenca
+from .models import Conversa, Mensagem, Participante, Presenca
 from .tempo_real import grupo_usuario
 
 Usuario = get_user_model()
@@ -71,6 +71,31 @@ class TestServicos:
         assert services.total_nao_lidas(bob) == 0
 
         services.enviar_mensagem(conversa, alice, 'Mais uma')
+        assert services.total_nao_lidas(bob) == 1
+
+    def test_mensagem_no_mesmo_instante_da_leitura_conta_como_nao_lida(self, conversa, alice, bob):
+        # Relógio com pouca precisão (Windows) gera horários iguais; a leitura é marcada pelo id.
+        services.enviar_mensagem(conversa, alice, 'Primeira')
+        services.marcar_conversa_lida(conversa, bob)
+        leitura = Participante.objects.get(conversa=conversa, usuario=bob).lida_ate
+        nova = services.enviar_mensagem(conversa, alice, 'Mesmo instante')
+        Mensagem.objects.filter(pk=nova.pk).update(criada_em=leitura)
+        assert services.total_nao_lidas(bob) == 1
+
+    def test_migracao_converte_leitura_por_horario_em_id(self, conversa, alice, bob):
+        from importlib import import_module
+        from django.apps import apps
+        migracao = import_module('chat.migrations.0002_ultima_lida_por_id')
+        antiga = services.enviar_mensagem(conversa, alice, 'Antiga')
+        recente = services.enviar_mensagem(conversa, alice, 'Recente')
+        agora = timezone.now()
+        Mensagem.objects.filter(pk=antiga.pk).update(criada_em=agora - timedelta(hours=2))
+        Mensagem.objects.filter(pk=recente.pk).update(criada_em=agora)
+        Participante.objects.filter(conversa=conversa, usuario=bob).update(
+            lida_ate=agora - timedelta(hours=1), ultima_lida_id=0
+        )
+        migracao.preencher_ultima_lida(apps, None)
+        assert Participante.objects.get(conversa=conversa, usuario=bob).ultima_lida_id == antiga.pk
         assert services.total_nao_lidas(bob) == 1
 
     def test_lista_de_conversas_traz_outro_participante_e_ultima_mensagem(self, conversa, alice, bob):

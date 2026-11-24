@@ -92,6 +92,8 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Paleta validada com o validador de dataviz contra o fundo branco dos cards (separação para daltonismo e contraste). Botão "Ver tabela" em cada gráfico, estados de vazio/erro, descrição para leitores de tela, nomes de usuários escapados nos tooltips.
   - Corrigida a série semanal: antes as semanas eram ordenadas como texto `dd/mm` (quebrava na virada do mês) e semanas sem chamados sumiam; agora são sempre 12 semanas em ordem cronológica com zeros. O JSON ganhou `linha.datas` e perdeu `prioridades.cores`.
   - Validação: 4 testes novos; páginas renderizadas no Edge headless (desktop, celular a 390px, vazios, tooltips e tabelas) e conferidas visualmente.
+  - Ajustes do padrão de dashboards (`front-rules.md`): tooltip pelo teclado (Tab foca o gráfico, setas/Home/End percorrem, Esc fecha), recorte do filtro de dev nos subtítulos e botão "Tentar de novo" em caso de falha. A adoção completa do design system (paleta Naicas, Lexend, Bootstrap) fica para a próxima tarefa.
+- **Correção no chat:** a contagem de não lidas comparava horários, e no Windows o relógio do Python muda só a cada ~3 ms, então uma mensagem enviada logo após marcar como lida contava como lida (teste falhava em 5 de 8 rodadas). Agora a leitura é marcada pelo id da última mensagem lida (`Participante.ultima_lida_id`, migração `chat.0002` que converte o histórico). Aplicada no banco local (cópia em `db-antes-chat0002-*.sqlite3`).
 
 ## Pendências / próximos passos
 - [ ] Testar o chat no navegador com dois usuários reais (interface não foi vista em navegador, só validada via HTTP/WebSocket).

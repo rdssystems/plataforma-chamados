@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import F, Max, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from .models import TOLERANCIA_PRESENCA, Conversa, Mensagem, Participante, Presenca
@@ -37,9 +39,7 @@ def obter_ou_criar_conversa(usuario, outro):
 
 def _nao_lidas(participacao):
     qs = Mensagem.objects.filter(conversa_id=participacao.conversa_id).exclude(autor_id=participacao.usuario_id)
-    if participacao.lida_ate:
-        qs = qs.filter(criada_em__gt=participacao.lida_ate)
-    return qs.count()
+    return qs.filter(id__gt=participacao.ultima_lida_id).count()
 
 
 def conversas_do_usuario(usuario):
@@ -86,7 +86,9 @@ def enviar_mensagem(conversa, autor, texto):
     with transaction.atomic():
         mensagem = Mensagem.objects.create(conversa=conversa, autor=autor, texto=texto)
         Conversa.objects.filter(pk=conversa.pk).update(atualizada_em=mensagem.criada_em)
-        Participante.objects.filter(conversa=conversa, usuario=autor).update(lida_ate=mensagem.criada_em)
+        Participante.objects.filter(conversa=conversa, usuario=autor).update(
+            lida_ate=mensagem.criada_em, ultima_lida_id=Greatest(F('ultima_lida_id'), Value(mensagem.pk))
+        )
 
         dados = serializar_mensagem(mensagem)
         for participante in conversa.participacoes.select_related('usuario'):
@@ -99,7 +101,11 @@ def enviar_mensagem(conversa, autor, texto):
 
 
 def marcar_conversa_lida(conversa, usuario):
-    Participante.objects.filter(conversa=conversa, usuario=usuario).update(lida_ate=timezone.now())
+    ultima = conversa.mensagens.aggregate(maior=Max('id'))['maior'] or 0
+    # Greatest: duas abas marcando ao mesmo tempo nunca fazem o marcador andar para trás.
+    Participante.objects.filter(conversa=conversa, usuario=usuario).update(
+        lida_ate=timezone.now(), ultima_lida_id=Greatest(F('ultima_lida_id'), Value(ultima))
+    )
     total = total_nao_lidas(usuario)
     publicar_para_usuario(usuario.pk, {'tipo': 'chat.lida', 'conversa_id': conversa.pk, 'nao_lidas_total': total})
     return total
