@@ -152,3 +152,27 @@ class UsuarioRedefinirSenhaView(AdminRequiredMixin, FormView):
             f"Senha do usuário '{self.usuario_alvo.username}' redefinida com sucesso para nova senha provisória."
         )
         return redirect(self.success_url)
+
+
+class AvatarView(LoginRequiredMixin, View):
+    """Foto de perfil servida pelo Django, só para quem está logado.
+
+    Em produção (DEBUG=False) nada serve /media/ diretamente, e de propósito: os anexos
+    dos chamados também ficam lá e só podem sair pela view com checagem de permissão.
+    """
+
+    def get(self, request, pk):
+        import mimetypes
+        from django.http import FileResponse, Http404
+
+        usuario = get_object_or_404(get_user_model(), pk=pk)
+        if not usuario.avatar or not usuario.avatar.storage.exists(usuario.avatar.name):
+            raise Http404('Usuário sem foto de perfil.')
+        tipo = mimetypes.guess_type(usuario.avatar.name)[0] or 'application/octet-stream'
+        if not tipo.startswith('image/'):
+            raise Http404('Arquivo de foto inválido.')
+        resposta = FileResponse(usuario.avatar.open('rb'), content_type=tipo)
+        # A URL muda quando a foto muda (?v=<arquivo>), então pode ficar em cache no navegador.
+        resposta['Cache-Control'] = 'private, max-age=86400'
+        resposta['X-Content-Type-Options'] = 'nosniff'
+        return resposta

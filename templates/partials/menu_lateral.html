@@ -7,6 +7,7 @@
     </div>
     <div class="offcanvas-body">
         <div class="menu-identificacao">
+            {% include 'partials/avatar.html' with pessoa=user tamanho='lg' %}
             <span class="menu-usuario">{{ user.get_full_name|default:user.username }}</span>
             <span class="cargo {% if user.is_admin %}cargo-admin{% else %}cargo-dev{% endif %}">{{ user.get_papel_display }}</span>
             <span class="small text-muted">{% if user.is_admin %}Visualizando a equipe inteira{% else %}Visualizando suas demandas{% endif %}</span>

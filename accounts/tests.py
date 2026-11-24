@@ -198,3 +198,46 @@ class TestGestaoUsuariosAdmin:
         dev.refresh_from_db()
         assert dev.check_password('reset123456') is True
         assert dev.deve_trocar_senha is True
+
+
+@pytest.mark.django_db
+class TestFotoDePerfil:
+    """A foto sai por uma view com login: em produção (DEBUG=False) nada serve /media/ direto,
+    de propósito, porque os anexos dos chamados também ficam lá."""
+
+    PNG_1x1 = (b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
+               b'\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82')
+
+    def _com_foto(self, settings, tmp_path):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        settings.MEDIA_ROOT = str(tmp_path)
+        u = Usuario.objects.create_user(username='com_foto', password='senha12345', deve_trocar_senha=False, first_name='Ana')
+        u.avatar = SimpleUploadedFile('foto.png', self.PNG_1x1, content_type='image/png')
+        u.save()
+        return u
+
+    def test_foto_servida_para_quem_esta_logado(self, client, settings, tmp_path):
+        u = self._com_foto(settings, tmp_path)
+        outro = Usuario.objects.create_user(username='colega', password='senha12345', deve_trocar_senha=False)
+        client.force_login(outro)
+        res = client.get(reverse('accounts:avatar', args=[u.pk]))
+        assert res.status_code == 200
+        assert res['Content-Type'] == 'image/png'
+        assert b''.join(res.streaming_content) == self.PNG_1x1
+
+    def test_foto_exige_login(self, client, settings, tmp_path):
+        u = self._com_foto(settings, tmp_path)
+        res = client.get(reverse('accounts:avatar', args=[u.pk]))
+        assert res.status_code == 302 and reverse('accounts:login') in res.url
+
+    def test_sem_foto_da_404(self, client):
+        u = Usuario.objects.create_user(username='sem_foto', password='senha12345', deve_trocar_senha=False)
+        client.force_login(u)
+        assert client.get(reverse('accounts:avatar', args=[u.pk])).status_code == 404
+
+    def test_paginas_usam_a_view_e_nao_o_caminho_de_media(self, client, settings, tmp_path):
+        u = self._com_foto(settings, tmp_path)
+        client.force_login(u)
+        html = client.get(reverse('dashboard:index')).content.decode()
+        assert reverse('accounts:avatar', args=[u.pk]) + '?v=' in html  # foto na barra e no menu
+        assert '/media/avatares/' not in html

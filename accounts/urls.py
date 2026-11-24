@@ -8,6 +8,7 @@ from .views import (
     UsuarioUpdateView,
     UsuarioToggleAtivoView,
     UsuarioRedefinirSenhaView,
+    AvatarView,
 )
 
 app_name = 'accounts'
@@ -24,4 +25,5 @@ urlpatterns = [
     path('usuarios/<int:pk>/editar/', UsuarioUpdateView.as_view(), name='usuario_update'),
     path('usuarios/<int:pk>/desativar/', UsuarioToggleAtivoView.as_view(), name='usuario_toggle'),
     path('usuarios/<int:pk>/redefinir-senha/', UsuarioRedefinirSenhaView.as_view(), name='usuario_redefinir_senha'),
+    path('usuarios/<int:pk>/foto/', AvatarView.as_view(), name='avatar'),
 ]

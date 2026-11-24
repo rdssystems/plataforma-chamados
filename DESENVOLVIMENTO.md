@@ -114,8 +114,9 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Corrigido junto: no celular, listagem de chamados e kanban abriam com zoom reduzido (a tabela dentro da área rolável alargava a página para 1243px); `contain: paint` nas áreas com rolagem. As 10 telas conferidas com 390px.
   - Validação: 7 testes novos (102 no total); teste ponta a ponta no Edge real via CDP com WebSocket real (21/21: aviso, contador, pulso, som tocado, abrir pelo aviso, responder com Enter, estado entre páginas, celular).
   - Limitação dos navegadores: o som só toca depois de a pessoa clicar ou teclar ao menos uma vez na página atual. A notificação do sistema não tem essa limitação.
+- **Foto de perfil não aparecia na VPS** (no localhost aparecia): em produção (`DEBUG=False`) nada serve `/media/` — o Caddy só serve `/static/`. Em vez de expor `/media/` (onde também ficam os anexos, que só podem sair pela view com permissão), a foto passou a ser servida por `accounts:avatar` (`/usuarios/<id>/foto/`), com login obrigatório, conferência de tipo de imagem e cache no navegador (`?v=<arquivo>`). A foto do usuário voltou a aparecer na barra superior e no menu lateral.
 ## Pendências / próximos passos
-- [ ] Testar o chat flutuante com usuários reais e em aparelho físico (percurso completo por teclado incluído) e depois subir para a VPS.
+- [ ] Testar o chat flutuante com usuários reais e em aparelho físico (percurso completo por teclado incluído).
 - [ ] Decidir se o `front-rules.md` (padrão da Secretaria) entra no repositório.
 - [ ] Decidir se haverá domínio + HTTPS público (nesse caso usar o `compose.yaml` original).
 - [ ] Rotina de backup do Postgres e dos anexos (volumes `postgres_data` e `media_data`).

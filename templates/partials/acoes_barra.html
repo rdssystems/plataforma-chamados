@@ -28,7 +28,7 @@
 
     <div class="dropdown d-none d-lg-block">
         <button type="button" class="acao-barra menu-conta" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Abrir opções da conta">
-            <i class="bi bi-person-circle" aria-hidden="true"></i>
+            {% if user.avatar %}{% include 'partials/avatar.html' with pessoa=user tamanho='sm' %}{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %}
             <span class="usuario-nav">
                 <span class="menu-conta-nome">{{ user.get_full_name|default:user.username }}</span>
                 <span class="cargo {% if user.is_admin %}cargo-admin{% else %}cargo-dev{% endif %}">{{ user.get_papel_display }}</span>
