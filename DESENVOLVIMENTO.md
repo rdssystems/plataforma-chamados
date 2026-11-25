@@ -129,6 +129,7 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Gráficos: barras em ardósia; rampa de prioridade `#2b3b50 → #919db2`; a linha "Abertos" usa ardósia viva `#3a70ac`, porque a ardósia pura é acinzentada demais para se separar do verde (validada no validador de dataviz).
   - Acessibilidade: texto branco sobre a primária a 8,5:1. O contorno de foco do teclado ficou mais opaco (0,55 → 0,8): com a ardósia ele cairia para 2,7:1, abaixo do mínimo de 3:1; agora tem 5:1 (com o anil era 3,0:1).
   - Validação: 106 testes; painel (com gráficos), listagem, kanban, detalhe, login, celular (390px) e PDF conferidos em prints.
+- **Deploy na VPS (GitHub + `./atualizar.sh`)**: produção foi de `839b01b` para `dad3447` (chat flutuante e foto de perfil já estavam; entram a ardósia e o diário). Backup antes: `/DATA/Backup/plataforma-chamados/antes-de-atualizar-20261125-155113.dump`. Sem migrações. Conferido de fora: login 200, `secretaria.css?v=20261125-1` com `--cor-primaria: #394e68`, gráficos com a linha "Abertos" em `#3a70ac`.
 
 ## Pendências / próximos passos
 - [ ] Testar o chat flutuante com usuários reais e em aparelho físico (percurso completo por teclado incluído).
