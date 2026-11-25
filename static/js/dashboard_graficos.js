@@ -8,7 +8,7 @@
  *   [data-estado]         mensagem de vazio/erro
  *   [data-subtitulo]      (opcional) texto preenchido a partir dos dados
  *
- * Cores: identidade da Secretaria (anil, folha), validadas com o validador de
+ * Cores: identidade do sistema (ardósia, folha), validadas com o validador de
  * dataviz (separação para daltonismo, contraste e luminosidade) contra a superfície
  * branca dos cards. Não trocar sem revalidar.
  */
@@ -26,11 +26,13 @@
         grade: '#e6e8ef',
         eixo: '#c8cbd6',
         borda: 'rgba(30,34,48,0.12)',
-        barra: '#2b3a8c',            // anil (--cor-primaria): gráficos de uma série
-        serie1: '#4a64c8',           // anil médio: Abertos
+        barra: '#394e68',            // ardósia (--cor-primaria): gráficos de uma série
+        // A ardósia pura é acinzentada demais para separar do verde numa linha;
+        // este é o mesmo tom com mais saturação (validado contra a folha).
+        serie1: '#3a70ac',           // ardósia viva: Abertos
         serie2: '#2e7a4c',           // folha (--cor-sucesso): Concluídos
         // Rampa ordinal de um só tom: mais escuro = mais urgente (Urgente → Baixa).
-        prioridade: ['#1f2a6b', '#2b3a8c', '#4a64c8', '#8d98d4'],
+        prioridade: ['#2b3b50', '#394e68', '#557090', '#919db2'],
     };
     var FONTE = "'Lexend', system-ui, -apple-system, 'Segoe UI', sans-serif";
     var ALTURA_BARRA = 40;   // altura reservada por categoria nos gráficos de barras

@@ -33,13 +33,13 @@ Percentual do relatório — **No prazo**: numerador = concluídos no período c
 | Listagem (chamados, plataformas, usuários, notificações) | Cabeçalho com a ação principal, painel de filtros, filtros ativos com remoção individual (chamados), total, tabela com rolagem horizontal própria, paginação que preserva o recorte. |
 | Detalhe do chamado | Trilha, identificação e selos de situação no cabeçalho, dados agrupados, linha do tempo, anexos, comentários e "Próximas ações" com a principal destacada. |
 | Cadastro e edição | Campos agrupados na ordem de preenchimento, erros junto ao campo (`aria-describedby`), resumo no topo, valores preservados, "Cancelar" + ação principal. |
-| Relatório | Período e recorte no cabeçalho, atalhos de período antes dos filtros, exportação Excel/PDF com o mesmo recorte e as mesmas permissões. O PDF repete a identidade visual (Lexend, anil, cards de indicador) e declara período, recorte, autoria, regras de cálculo e paginação. |
+| Relatório | Período e recorte no cabeçalho, atalhos de período antes dos filtros, exportação Excel/PDF com o mesmo recorte e as mesmas permissões. O PDF repete a identidade visual (Lexend, primária ardósia, cards de indicador) e declara período, recorte, autoria, regras de cálculo e paginação. |
 
 ## Critérios de aceite (seção 9)
 
 | Verificação | Situação |
 | --- | --- |
-| Identidade entre sistemas | Mesma base do Naicas: Bootstrap 5.3, Bootstrap Icons, Lexend, tokens anil/urucum/ipê/folha (`static/css/secretaria.css`), barra anil, `cabecalho-pagina`, cards de indicador. A "fita" é assinatura só do Naicas e não foi usada. Comparação lado a lado com o Naicas em produção **(a confirmar)**. |
+| Identidade entre sistemas | Mesma base do Naicas: Bootstrap 5.3, Bootstrap Icons, Lexend, tokens urucum/ipê/folha/papel/grafite (`static/css/secretaria.css`), `cabecalho-pagina`, cards de indicador. **Exceção decidida em 2026-11-25:** a cor primária do Gestão de Chamados é ardósia `#394e68` (o padrão e o Naicas usam anil `#2b3a8c`), para distinguir o sistema também pela cor. Só a família da primária mudou (primária, escura, média e tons claros); contraste do texto branco 8,5:1. Nos gráficos, a linha "Abertos" usa ardósia viva `#3a70ac`, validada contra a folha. A "fita" é assinatura só do Naicas e não foi usada. Comparação lado a lado com o Naicas em produção **(a confirmar)**. |
 | Indicador e detalhamento | Testado: cada card bate com a listagem correspondente, com e sem recorte (`config/test_padrao_secretaria.py`). |
 | Filtros e paginação | Testado: filtro inválido mostra erro no campo, preserva o valor e suspende os resultados; paginação preserva os filtros. |
 | Permissão e contexto | Testado com administrador e desenvolvedor; URL direta fora do escopo continua bloqueada (403). |
