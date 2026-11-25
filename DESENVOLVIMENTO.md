@@ -19,8 +19,12 @@
 - Disco raiz (`/`) é somente-leitura/cheio por design do ZimaOS; dados e Docker ficam em `/DATA`.
 - O usuário `klismanrds` não está no grupo `docker`: comandos Docker precisam de `sudo`.
 - Portas **80/443 ocupadas** pelo gateway do ZimaOS → por isso o app usa `compose.vps.yaml` (porta 8030, HTTP).
-- Outros apps na mesma VPS (não mexer sem combinar): `naicas-app` (127.0.0.1:8020, público via Funnel), `gerenciamento-web-1`, `nextcloud` (10081/10443), `tailscale`.
-- **Tailscale Funnel** (desde 2026-11-13): https://servidor-test.taile3dafe.ts.net (porta 443) → Naicas. HTTPS e Funnel já estão habilitados na tailnet. Se a Plataforma de Chamados precisar de HTTPS público, usar as portas de Funnel **8443** ou **10000** (`sudo docker exec tailscale tailscale funnel --bg --https=8443 8030`), e então ajustar `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e `SECURE_SSL=True`.
+- Outros apps na mesma VPS (não mexer sem combinar): `naicas-app` (127.0.0.1:8020, público via Funnel), `gerenciamento-web-1`, `nextcloud` (10081/10443), `jellyfin` (servidor "NetFrix", 127.0.0.1:8097, público via Funnel 8443), `tailscale`.
+- **Tailscale Funnel** (HTTPS e Funnel já habilitados na tailnet; o Funnel só aceita as portas 443, 8443 e 10000):
+  - 443 → Naicas (desde 2026-11-13): https://servidor-test.taile3dafe.ts.net
+  - 8443 → Jellyfin (desde 2026-11-24): https://servidor-test.taile3dafe.ts.net:8443
+  - Se a Plataforma de Chamados precisar de HTTPS público, sobra a **10000** (`sudo docker exec tailscale tailscale funnel --bg --https=10000 http://127.0.0.1:8030`), e então ajustar `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e `SECURE_SSL=True`.
+  - Ver a configuração: `sudo docker exec tailscale tailscale funnel status`.
 - O Naicas tem deploy automático (`naicas-update.timer`, a cada minuto, mantido pelo Isaque Miranda) e regras próprias no `CLAUDE.md` do repositório dele.
 - Acesso é por HTTP dentro do Tailscale (tráfego já criptografado pelo WireGuard). Por isso `SECURE_SSL=False`.
 - Não há `openssl` na VPS: gerar segredos com `head -c 48 /dev/urandom | od -An -tx1 | tr -d " \n"`.
@@ -115,6 +119,17 @@ O `.env.production` fica só na VPS (ignorado pelo git); o modelo é `.env.vps.e
   - Validação: 7 testes novos (102 no total); teste ponta a ponta no Edge real via CDP com WebSocket real (21/21: aviso, contador, pulso, som tocado, abrir pelo aviso, responder com Enter, estado entre páginas, celular).
   - Limitação dos navegadores: o som só toca depois de a pessoa clicar ou teclar ao menos uma vez na página atual. A notificação do sistema não tem essa limitação.
 - **Foto de perfil não aparecia na VPS** (no localhost aparecia): em produção (`DEBUG=False`) nada serve `/media/` — o Caddy só serve `/static/`. Em vez de expor `/media/` (onde também ficam os anexos, que só podem sair pela view com permissão), a foto passou a ser servida por `accounts:avatar` (`/usuarios/<id>/foto/`), com login obrigatório, conferência de tipo de imagem e cache no navegador (`?v=<arquivo>`). A foto do usuário voltou a aparecer na barra superior e no menu lateral.
+- **Jellyfin com HTTPS público pelo Tailscale Funnel** (fora deste app, mesma VPS): `tailscale funnel --bg --https=8443 http://127.0.0.1:8097` no container `tailscale`. Porta separada em vez de caminho (`/jellyfin`) para ficar em outra origem que não a do Naicas e não precisar mexer na URL base do Jellyfin.
+  - `network.xml` do Jellyfin (`/DATA/AppData/jellyfin/config/`) ganhou `KnownProxies` 172.17.0.1 (gateway do Docker) e 127.0.0.1, para ele usar o `X-Forwarded-For` do Funnel. Sem isso todo acesso da internet chegaria como 172.17.0.1, ou seja, como rede local, e as restrições de acesso remoto por usuário não valeriam. Cópia anterior: `network.xml.antes-funnel-20261124_174011`. Container reiniciado uma vez.
+  - Conferido: TLS 1.3 com certificado Let's Encrypt pela tailnet e pelos dois pontos de entrada públicos; `/web/` abre; o log registra o IP público real de quem tenta logar; a lista de usuários não aparece para a internet; os 3 usuários têm senha; o Naicas na 443 continua respondendo.
+  - Desligar: `sudo docker exec tailscale tailscale funnel --https=8443 off`.
+### 2026-11-25
+- **Cor primária trocada de anil para ardósia `#394e68`** (exceção ao `front-rules.md`, que usa a paleta do Naicas em todos os sistemas; decisão do usuário para diferenciar o Gestão de Chamados). Antes foram comparadas açaí, azul-igarapé, vinho e ardósia em prints da tela real.
+  - Mudou só a família da primária, em `static/css/secretaria.css` (primária, escura `#2b3b50`, média `#557090`, tons claros e as variáveis `rgb` do Bootstrap), no PDF, no `theme-color` e nos gráficos. Urucum, ipê, folha, papel e grafite seguem o padrão.
+  - Gráficos: barras em ardósia; rampa de prioridade `#2b3b50 → #919db2`; a linha "Abertos" usa ardósia viva `#3a70ac`, porque a ardósia pura é acinzentada demais para se separar do verde (validada no validador de dataviz).
+  - Acessibilidade: texto branco sobre a primária a 8,5:1. O contorno de foco do teclado ficou mais opaco (0,55 → 0,8): com a ardósia ele cairia para 2,7:1, abaixo do mínimo de 3:1; agora tem 5:1 (com o anil era 3,0:1).
+  - Validação: 106 testes; painel (com gráficos), listagem, kanban, detalhe, login, celular (390px) e PDF conferidos em prints.
+
 ## Pendências / próximos passos
 - [ ] Testar o chat flutuante com usuários reais e em aparelho físico (percurso completo por teclado incluído).
 - [ ] Decidir se o `front-rules.md` (padrão da Secretaria) entra no repositório.
